@@ -1,0 +1,31 @@
+name: playground
+
+test:
+  mnemonic: ${SEED}
+  number_of_accounts: 10
+
+plugins:
+  - name: foundry
+  - name: alchemy
+  - name: optimism
+  - name: arbitrum
+  - name: base
+
+foundry:
+  block_time: 2
+  fork:
+    base:
+      mainnet:
+        upstream_provider: alchemy
+      sepolia:
+        upstream_provider: alchemy
+    optimism:
+      mainnet:
+        upstream_provider: alchemy
+      sepolia:
+        upstream_provider: alchemy
+    arbitrum:
+      mainnet:
+        upstream_provider: alchemy
+      sepolia:
+        upstream_provider: alchemy
