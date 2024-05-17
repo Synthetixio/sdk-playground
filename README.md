@@ -1,11 +1,11 @@
-# Sample Project
+# SDK Playground
 
-This is a template to help you start a Synthetix project using the [Python SDK](https://github.com/Synthetixio/python-sdk).
+This is a sample repository with some ideas using the [Python SDK](https://github.com/Synthetixio/python-sdk).
 
 ## Getting Started
 
 1. Before you begin, ensure you have:
-* A RPC endpoint like [Infura](https://infura.io/) or [Alchemy](https://www.alchemy.com/)
+* An API key from [Alchemy](https://www.alchemy.com/)
 * A wallet address **and** the private key for that address
 * Installed Python 3.8 or greater
     * Run `python --version` in your terminal to check
@@ -13,7 +13,7 @@ This is a template to help you start a Synthetix project using the [Python SDK](
 2. Download this repository to a preferred location on your computer. Here's how:
 
 ```bash
-git clone https://github.com/Synthetixio/project-template-python.git
+git clone https://github.com/Synthetixio/sdk-playground.git
 cd project-template-python
 ```
 
@@ -27,48 +27,35 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-4. Make a copy of the .env.example file, name it .env, and then enter the details for your RPC and wallet.
-
-```
-PROVIDER_RPC=<An RPC endpoint>
-PRIVATE_KEY=<Your private key (optional)>
-```
-
-The private key is optional. If one is not provided, the SDK can simulate a specified address, but transaction signing will be disabled.
-
-5. Run the status script:
-
+4. Install `ape` plugins:
+    
 ```bash
-python status.py
+ape plugins install .
 ```
 
-You should see results displaying your balances and market information, as shown below:
+5. Make a copy of the .env.example file, name it .env, and then enter the details for your RPC and wallet.
 
-```bash
-$ python status.py
 
-Address: 0xD199157bB8a47bEF78e539908dEE5A41e7d5FE9f
-ETH balance: 1.287
-WETH balance: 0.0
-sUSD balance: 10238.922
+The private key is optional. If one is not provided, the SDK will simulate the specified address, but transaction signing will be disabled.
 
-Perps accounts: 100, 101, 102
-Perps default account: 100
-Perps markets: BTC, ETH, LINK, OP, SNX
-```
-
-Congratulations! If you've made it this far you can start to build your own project using the Python SDK. More scripts are available in the `scripts` directory.
 
 ## Running Scripts
 
-If you've completed the steps above, you can run any of the scripts in the `scripts` directory. For example:
+If you've completed the steps above, you can run any of the scripts in the `scripts` directory using the Ape framework. For example:
 
 ```bash
-python scripts/create_account.py
+# run the file at scripts/base_fork.py
+ape run base_fork
 ```
 
 By default, these scripts won't submit transactions. To enable this, you must edit the script and set `submit=True`. This precaution helps avoid unintended transactions on the blockchain.
 Always use caution and carefully review the code before submitting transactions.
+
+## Notebooks
+
+There are also some Jupyter notebooks that don't rely on the Ape framework. You can open these using VS Code or Jupyter Notebook. Use the environment created above to run these notebooks.
+
+For example, if you've properly set up your notebook environment, you can copy the template from `notebooks/templates/base_sepolia.ipynb` and start calling the contracts. If a private key is provided, you can also submit transactions.
 
 ## Documentation
 
