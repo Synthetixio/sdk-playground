@@ -1,4 +1,4 @@
 eth-ape
 python-dotenv
 ipykernel
-synthetix==0.1.10
+synthetix==0.1.11
