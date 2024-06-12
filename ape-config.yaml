@@ -12,7 +12,6 @@ plugins:
   - name: base
 
 foundry:
-  block_time: 2
   fork:
     base:
       mainnet:

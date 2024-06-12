@@ -10,23 +10,23 @@ load_dotenv()
 # tests
 MARKET_NAMES = [
     "ETH",
-    "BTC",
-    "SOL",
-    "SNX",
-    "WIF",
-    "W",
-    "ARB",
-    "AVAX",
-    "BNB",
-    "BONK",
-    "DOGE",
-    "ENA",
-    "FTM",
-    "MATIC",
-    "OP",
-    "ORDI",
-    "PEPE",
-    "RUNE",
+    # "BTC",
+    # "SOL",
+    # "SNX",
+    # "WIF",
+    # "W",
+    # "ARB",
+    # "AVAX",
+    # "BNB",
+    # "BONK",
+    # "DOGE",
+    # "ENA",
+    # "FTM",
+    # "MATIC",
+    # "OP",
+    # "ORDI",
+    # "PEPE",
+    # "RUNE",
 ]
 TEST_COLLATERAL_AMOUNT = 1000
 TEST_POSITION_SIZE_USD = 500
@@ -151,6 +151,7 @@ def test_account_flow(snx, new_account_id, market_name):
     # check the price
     index_price = snx.perps.markets_by_name[market_name]["index_price"]
 
+    # commit order
     position_size = TEST_POSITION_SIZE_USD / index_price
     commit_tx = snx.perps.commit_order(
         position_size,

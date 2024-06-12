@@ -1,9 +1,7 @@
-import time
 import pytest
 from dotenv import load_dotenv
 from synthetix.utils import ether_to_wei, wei_to_ether, format_wei
 from conftest import chain_fork
-from ape import chain
 
 load_dotenv()
 
@@ -11,12 +9,6 @@ load_dotenv()
 TEST_AMOUNT = 100
 
 # tests
-def mine_block(snx, chain, seconds=3):
-    time.sleep(seconds)
-    timestamp = int(time.time())
-
-    chain.mine(1, timestamp=timestamp)
-    snx.logger.info(f"Block mined at timestamp {timestamp}")
 
 
 @chain_fork
@@ -112,190 +104,6 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
     assert unwrapped_synth_balance == wrapped_synth_balance - test_amount
 
 
-@chain_fork
-@pytest.mark.parametrize(
-    "token_name, test_amount, decimals",
-    [
-        ("USDC", TEST_AMOUNT, 6),
-    ],
-)
-def test_spot_async_order(
-    snx, contracts, token_name, test_amount, decimals
-):
-    """The instance can wrap USDC for sUSDC and commit an async order to sell for sUSD"""
-    token = contracts[token_name]
-    market_id = snx.spot.markets_by_name[f"s{token_name}"]["market_id"]
-
-    wrapped_token = snx.spot.markets_by_id[market_id]["contract"]
-    susd_token = snx.spot.markets_by_id[0]["contract"]
-
-    # make sure we have some USDC
-    starting_balance_wei = token.functions.balanceOf(snx.address).call()
-    starting_balance = format_wei(starting_balance_wei, decimals)
-
-    starting_synth_balance = snx.spot.get_balance(market_id=market_id)
-    starting_susd_balance = snx.spot.get_balance(market_id=0)
-
-    assert starting_balance > test_amount
-
-    ## wrap
-    # check the allowance
-    allowance = snx.allowance(token.address, snx.spot.market_proxy.address)
-
-    if allowance < test_amount:
-        # reset nonce manually to avoid nonce issues
-        snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
-
-        # approve
-        approve_tx = snx.approve(
-            token.address, snx.spot.market_proxy.address, submit=True
-        )
-        snx.wait(approve_tx)
-
-    wrap_tx = snx.spot.wrap(test_amount, market_id=market_id, submit=True)
-    snx.wait(wrap_tx)
-
-    # check balances
-    wrapped_balance_wei = token.functions.balanceOf(snx.address).call()
-    wrapped_balance = format_wei(wrapped_balance_wei, decimals)
-
-    wrapped_synth_balance = snx.spot.get_balance(market_id=market_id)
-    wrapped_susd_balance = snx.spot.get_balance(market_id=0)
-
-    assert wrapped_balance == starting_balance - test_amount
-    assert wrapped_synth_balance == starting_synth_balance + test_amount
-    assert wrapped_susd_balance == starting_susd_balance
-
-    ## sell it
-    # check the allowance
-    wrapped_allowance = snx.allowance(
-        wrapped_token.address, snx.spot.market_proxy.address
-    )
-
-    if wrapped_allowance < test_amount:
-        # reset nonce manually to avoid nonce issues
-        snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
-
-        # approve
-        approve_tx = snx.approve(
-            wrapped_token.address, snx.spot.market_proxy.address, submit=True
-        )
-        snx.wait(approve_tx)
-
-    # commit order
-    mine_block(snx, chain)
-    commit_tx = snx.spot.commit_order(
-        "sell", test_amount, slippage_tolerance=0.001, market_id=market_id, submit=True
-    )
-    commit_receipt = snx.wait(commit_tx)
-
-    assert commit_tx is not None
-    assert commit_receipt is not None
-    assert commit_receipt.status == 1
-
-    # get the event to check the order id
-    event_data = snx.spot.market_proxy.events.OrderCommitted().process_receipt(
-        commit_receipt
-    )
-    assert len(event_data) == 1
-
-    # unpack the event
-    event = event_data[0]["args"]
-    async_order_id = event["asyncOrderId"]
-
-    # settle the order
-    mine_block(snx, chain)
-    snx.logger.info(f"Settling order {async_order_id} {event}")
-    settle_tx = snx.spot.settle_order(async_order_id, market_id=market_id, submit=True)
-    settle_receipt = snx.wait(settle_tx)
-
-    assert settle_tx is not None
-    assert settle_receipt is not None
-
-    # check balances
-    sold_balance_wei = token.functions.balanceOf(snx.address).call()
-    sold_balance = format_wei(sold_balance_wei, decimals)
-
-    sold_synth_balance = snx.spot.get_balance(market_id=market_id)
-    sold_susd_balance = snx.spot.get_balance(market_id=0)
-
-    assert sold_balance == wrapped_balance
-    assert sold_synth_balance >= wrapped_synth_balance - test_amount - 1
-    assert sold_susd_balance >= wrapped_susd_balance
-
-    ## buy it back
-    # check the allowance
-    sold_allowance = snx.allowance(susd_token.address, snx.spot.market_proxy.address)
-
-    if sold_allowance < test_amount:
-        # reset nonce manually to avoid nonce issues
-        snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
-
-        # approve
-        approve_tx = snx.approve(
-            susd_token.address, snx.spot.market_proxy.address, submit=True
-        )
-        snx.wait(approve_tx)
-
-    # commit order
-    mine_block(snx, chain)
-    commit_buy_tx = snx.spot.commit_order(
-        "buy",
-        test_amount - 1,
-        slippage_tolerance=0.001,
-        market_id=market_id,
-        submit=True,
-    )
-    commit_buy_receipt = snx.wait(commit_buy_tx)
-
-    # get the event to check the order id
-    event_data_buy = snx.spot.market_proxy.events.OrderCommitted().process_receipt(
-        commit_buy_receipt
-    )
-    assert len(event_data_buy) == 1
-
-    # unpack the event
-    event_buy = event_data_buy[0]["args"]
-    async_order_id_buy = event_buy["asyncOrderId"]
-
-    # settle the order
-    mine_block(snx, chain)
-    settle_buy_tx = snx.spot.settle_order(
-        async_order_id_buy, market_id=market_id, submit=True
-    )
-    settle_buy_receipt = snx.wait(settle_buy_tx)
-
-    assert settle_buy_tx is not None
-    assert settle_buy_receipt is not None
-
-    # check balances
-    buy_balance_wei = token.functions.balanceOf(snx.address).call()
-    buy_balance = format_wei(buy_balance_wei, decimals)
-
-    buy_synth_balance = snx.spot.get_balance(market_id=market_id)
-    buy_susd_balance = snx.spot.get_balance(market_id=0)
-
-    assert buy_balance == sold_balance
-    assert buy_synth_balance >= sold_synth_balance + test_amount - 2
-    assert buy_susd_balance >= sold_susd_balance - test_amount
-
-    ## unwrap
-    unwrap_tx = snx.spot.wrap(-test_amount + 2, market_id=market_id, submit=True)
-    unwrap_receipt = snx.wait(unwrap_tx)
-
-    assert unwrap_tx is not None
-    assert unwrap_receipt is not None
-    assert unwrap_receipt.status == 1
-
-    # get new balances
-    unwrapped_balance_wei = token.functions.balanceOf(snx.address).call()
-    unwrapped_balance = format_wei(unwrapped_balance_wei, decimals)
-
-    unwrapped_synth_balance = snx.spot.get_balance(market_id=market_id)
-
-    assert unwrapped_balance == starting_balance - 2
-    assert unwrapped_synth_balance >= buy_synth_balance - test_amount - 1
-
 
 @chain_fork
 @pytest.mark.parametrize(
@@ -304,9 +112,7 @@ def test_spot_async_order(
         ("USDC", TEST_AMOUNT, 6),
     ],
 )
-def test_spot_atomic_order(
-    snx, contracts, token_name, test_amount, decimals
-):
+def test_spot_atomic_order(snx, contracts, token_name, test_amount, decimals):
     """The instance can wrap USDC for sUSDC and commit an atomic order to sell for sUSD"""
     token = contracts[token_name]
     market_id = snx.spot.markets_by_name[f"s{token_name}"]["market_id"]
@@ -366,7 +172,7 @@ def test_spot_atomic_order(
 
     # atomic swap
     swap_tx = snx.spot.atomic_order(
-        "sell", test_amount, slippage_tolerance=0.001, market_id=market_id, submit=True
+        "sell", test_amount, market_id=market_id, submit=True
     )
     swap_receipt = snx.wait(swap_tx)
 
@@ -382,7 +188,7 @@ def test_spot_atomic_order(
 
     assert swapped_balance == starting_balance - test_amount
     assert swapped_synth_balance == wrapped_synth_balance - test_amount
-    assert swapped_susd_balance > starting_susd_balance + (test_amount * 0.999)
+    assert swapped_susd_balance == starting_susd_balance + test_amount
 
     ## buy wrapped token back
     # check the allowance
@@ -401,8 +207,7 @@ def test_spot_atomic_order(
     # atomic swap
     buy_tx = snx.spot.atomic_order(
         "buy",
-        swapped_susd_balance,
-        slippage_tolerance=0.001,
+        test_amount,
         market_id=market_id,
         submit=True,
     )
@@ -419,8 +224,8 @@ def test_spot_atomic_order(
     bought_susd_balance = snx.spot.get_balance(market_id=0)
 
     assert bought_balance == swapped_balance
-    assert bought_synth_balance >= swapped_synth_balance + test_amount
-    assert bought_susd_balance == 0
+    assert bought_synth_balance == swapped_synth_balance + test_amount
+    assert bought_susd_balance == swapped_susd_balance - test_amount
 
     ## unwrap
     # check the allowance

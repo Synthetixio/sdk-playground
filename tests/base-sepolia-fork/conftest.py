@@ -10,14 +10,14 @@ from ape import networks, chain
 load_dotenv()
 
 # find an address with a lot of usdc
-USDC_WHALE = "0xD34EA7278e6BD48DefE656bbE263aEf11101469c"
+SNX_DEPLOYER = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
 KWENTA_REFERRER = "0x3bD64247d879AF879e6f6e62F81430186391Bdb8"
 
 
 def chain_fork(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        with networks.parse_network_choice("base:mainnet-fork:foundry"):
+        with networks.parse_network_choice("base:sepolia-fork:foundry"):
             return func(*args, **kwargs)
 
     return wrapper
@@ -30,33 +30,37 @@ def snx():
     # set up the snx instance
     snx = Synthetix(
         provider_rpc=chain.provider.uri,
-        network_id=8453,
+        network_id=84532,
         referrer=KWENTA_REFERRER,
         is_fork=True,
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
-            "version": "30",
-            "preset": "andromeda"
-        }
+            "version": "33",
+            "preset": "andromeda",
+        },
     )
 
     # check usdc balance
-    usdc_contract = snx.contracts["USDC"]["contract"]
+    usdc_package = snx.contracts["packages"]["usdc_mock_collateral"]["MintableToken"]
+    usdc_contract = snx.web3.eth.contract(
+        address=usdc_package["address"], abi=usdc_package["abi"]
+    )
+
     usdc_balance = usdc_contract.functions.balanceOf(snx.address).call()
     usdc_balance = usdc_balance / 10**6
 
     # get some usdc
     if usdc_balance < 100000:
-        transfer_amount = int((100000 - usdc_balance) * 10**6)
-        snx.web3.provider.make_request("anvil_impersonateAccount", [USDC_WHALE])
+        snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER])
 
-        tx_params = usdc_contract.functions.transfer(
-            snx.address, transfer_amount
+        mint_amount = int((100000 - usdc_balance) * 10**6)
+        tx_params = usdc_contract.functions.mint(
+            mint_amount, snx.address
         ).build_transaction(
             {
-                "from": USDC_WHALE,
-                "nonce": snx.web3.eth.get_transaction_count(USDC_WHALE),
+                "from": SNX_DEPLOYER,
+                "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER),
             }
         )
 
@@ -64,7 +68,7 @@ def snx():
         tx_hash = snx.web3.eth.send_transaction(tx_params)
         receipt = snx.wait(tx_hash)
         if receipt["status"] != 1:
-            raise Exception("USDC Transfer failed")
+            raise Exception("USDC Mint failed")
 
         # wrap some USDC
         approve_tx_1 = snx.approve(
@@ -91,14 +95,18 @@ def snx():
 def contracts(snx):
     # create some needed contracts
     weth = snx.contracts["WETH"]["contract"]
-    usdc = snx.contracts["USDC"]["contract"]
+
+    usdc_package = snx.contracts["packages"]["usdc_mock_collateral"]["MintableToken"]
+    usdc = snx.web3.eth.contract(
+        address=usdc_package["address"], abi=usdc_package["abi"]
+    )
     return {
         "WETH": weth,
         "USDC": usdc,
     }
 
 
-@chain_fork 
+@chain_fork
 @pytest.fixture(scope="module")
 def account_id(snx):
     # check if an account exists
