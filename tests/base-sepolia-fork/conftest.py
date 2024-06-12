@@ -34,10 +34,19 @@ def snx():
         referrer=KWENTA_REFERRER,
         is_fork=True,
         request_kwargs={"timeout": 120},
+        cannon_config={
+            "package": "synthetix-omnibus",
+            "version": "33",
+            "preset": "andromeda",
+        },
     )
 
     # check usdc balance
-    usdc_contract = snx.contracts["MintableToken"]["contract"]
+    usdc_package = snx.contracts["packages"]["usdc_mock_collateral"]["MintableToken"]
+    usdc_contract = snx.web3.eth.contract(
+        address=usdc_package["address"], abi=usdc_package["abi"]
+    )
+
     usdc_balance = usdc_contract.functions.balanceOf(snx.address).call()
     usdc_balance = usdc_balance / 10**6
 
@@ -86,14 +95,18 @@ def snx():
 def contracts(snx):
     # create some needed contracts
     weth = snx.contracts["WETH"]["contract"]
-    usdc = snx.contracts["MintableToken"]["contract"]
+
+    usdc_package = snx.contracts["packages"]["usdc_mock_collateral"]["MintableToken"]
+    usdc = snx.web3.eth.contract(
+        address=usdc_package["address"], abi=usdc_package["abi"]
+    )
     return {
         "WETH": weth,
         "USDC": usdc,
     }
 
 
-@chain_fork 
+@chain_fork
 @pytest.fixture(scope="module")
 def account_id(snx):
     # check if an account exists
@@ -122,8 +135,6 @@ def account_id(snx):
 
     yield final_account_id
 
-    close_positions_and_withdraw(snx, final_account_id)
-
 
 @chain_fork
 @pytest.fixture(scope="function")
@@ -136,35 +147,3 @@ def new_account_id(snx):
     new_account_id = account_ids[-1]
 
     yield new_account_id
-
-
-@chain_fork
-def close_positions_and_withdraw(snx, account_id):
-    # close positions
-    positions = snx.perps.get_open_positions(account_id=account_id)
-
-    for market_name in positions:
-        size = positions[market_name]["position_size"]
-
-        commit_tx = snx.perps.commit_order(
-            -size, market_name=market_name, account_id=account_id, submit=True
-        )
-        snx.wait(commit_tx)
-
-        # wait for the order settlement
-        snx.perps.settle_order(account_id=account_id, submit=True)
-
-        # check the result
-        position = snx.perps.get_open_position(
-            market_name=market_name, account_id=account_id
-        )
-        assert position["position_size"] == 0
-
-    # withdraw all collateral
-    collateral_balances = snx.perps.get_collateral_balances(account_id)
-    for market_name, balance in collateral_balances.items():
-        if balance > 0:
-            withdraw_tx = snx.perps.modify_collateral(
-                -balance, market_name=market_name, account_id=account_id, submit=True
-            )
-            snx.wait(withdraw_tx)

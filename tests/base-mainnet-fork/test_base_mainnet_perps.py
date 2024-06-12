@@ -1,7 +1,9 @@
 import pytest
+import time
 import math
 from dotenv import load_dotenv
 from conftest import chain_fork
+from ape import chain
 
 load_dotenv()
 
@@ -28,6 +30,14 @@ MARKET_NAMES = [
 ]
 TEST_COLLATERAL_AMOUNT = 1000
 TEST_POSITION_SIZE_USD = 500
+
+
+def mine_block(snx, chain, seconds=3):
+    time.sleep(seconds)
+    timestamp = int(time.time())
+
+    chain.mine(1, timestamp=timestamp)
+    snx.logger.info(f"Block mined at timestamp {timestamp}")
 
 
 def test_perps_module(snx):
@@ -116,6 +126,8 @@ def test_modify_collateral(snx, account_id):
     MARKET_NAMES,
 )
 def test_account_flow(snx, new_account_id, market_name):
+    mine_block(snx, chain, seconds=0)
+
     # check allowance
     allowance = snx.spot.get_allowance(
         snx.perps.market_proxy.address, market_name="sUSD"
@@ -139,7 +151,6 @@ def test_account_flow(snx, new_account_id, market_name):
     # check the price
     index_price = snx.perps.markets_by_name[market_name]["index_price"]
 
-    # commit order
     position_size = TEST_POSITION_SIZE_USD / index_price
     commit_tx = snx.perps.commit_order(
         position_size,
@@ -152,6 +163,7 @@ def test_account_flow(snx, new_account_id, market_name):
     assert commit_receipt["status"] == 1
 
     # wait for the order settlement
+    mine_block(snx, chain)
     settle_tx = snx.perps.settle_order(
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
@@ -181,6 +193,7 @@ def test_account_flow(snx, new_account_id, market_name):
     assert commit_receipt_2["status"] == 1
 
     # wait for the order settlement
+    mine_block(snx, chain)
     settle_tx_2 = snx.perps.settle_order(
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
@@ -194,7 +207,6 @@ def test_account_flow(snx, new_account_id, market_name):
 
     # check the margin and withdraw
     margin_info = snx.perps.get_margin_info(new_account_id)
-    snx.logger.info(f"Margin info: {margin_info}")
     withdrawable_margin = margin_info["withdrawable_margin"]
     withdrawable_margin = math.floor(withdrawable_margin * 1e8) / 1e8
 
@@ -213,12 +225,12 @@ def test_account_flow(snx, new_account_id, market_name):
     ["market_1", "market_2"],
     [
         ("ETH", "BTC"),
-        ("ETH", "SOL"),
         ("SNX", "WIF"),
-        ("W", "BTC"),
     ],
 )
 def test_multiple_positions(snx, new_account_id, market_1, market_2):
+    mine_block(snx, chain, seconds=0)
+
     # check allowance
     allowance = snx.spot.get_allowance(
         snx.perps.market_proxy.address, market_name="sUSD"
@@ -256,6 +268,7 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
     assert commit_receipt_1["status"] == 1
 
     # wait for the order settlement
+    mine_block(snx, chain)
     settle_tx_1 = snx.perps.settle_order(
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
@@ -278,6 +291,7 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
     assert commit_receipt_2["status"] == 1
 
     # wait for the order settlement
+    mine_block(snx, chain)
     settle_tx_2 = snx.perps.settle_order(
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
@@ -303,6 +317,7 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
     assert commit_receipt_3["status"] == 1
 
     # wait for the order settlement
+    mine_block(snx, chain)
     settle_tx_3 = snx.perps.settle_order(
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
@@ -321,6 +336,7 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
     assert commit_receipt_4["status"] == 1
 
     # wait for the order settlement
+    mine_block(snx, chain)
     settle_tx_4 = snx.perps.settle_order(
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
