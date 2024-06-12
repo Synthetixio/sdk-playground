@@ -29,12 +29,12 @@ def snx(pytestconfig):
     # set up the snx instance
     snx = Synthetix(
         provider_rpc=chain.provider.uri,
-        network_id=421614,
+        network_id=42161,
         is_fork=True,
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
-            "version": "latest",
+            "version": "1",
             "preset": "main",
         },
     )
