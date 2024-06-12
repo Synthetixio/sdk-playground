@@ -1,7 +1,9 @@
+import time
 import pytest
 from dotenv import load_dotenv
 from synthetix.utils import ether_to_wei, wei_to_ether, format_wei
 from conftest import chain_fork
+from ape import chain
 
 load_dotenv()
 
@@ -9,6 +11,12 @@ load_dotenv()
 TEST_AMOUNT = 100
 
 # tests
+def mine_block(snx, chain, seconds=3):
+    time.sleep(seconds)
+    timestamp = int(time.time())
+
+    chain.mine(1, timestamp=timestamp)
+    snx.logger.info(f"Block mined at timestamp {timestamp}")
 
 
 @chain_fork
@@ -175,6 +183,7 @@ def test_spot_async_order(
         snx.wait(approve_tx)
 
     # commit order
+    mine_block(snx, chain)
     commit_tx = snx.spot.commit_order(
         "sell", test_amount, slippage_tolerance=0.001, market_id=market_id, submit=True
     )
@@ -195,6 +204,7 @@ def test_spot_async_order(
     async_order_id = event["asyncOrderId"]
 
     # settle the order
+    mine_block(snx, chain)
     snx.logger.info(f"Settling order {async_order_id} {event}")
     settle_tx = snx.spot.settle_order(async_order_id, market_id=market_id, submit=True)
     settle_receipt = snx.wait(settle_tx)
@@ -228,6 +238,7 @@ def test_spot_async_order(
         snx.wait(approve_tx)
 
     # commit order
+    mine_block(snx, chain)
     commit_buy_tx = snx.spot.commit_order(
         "buy",
         test_amount - 1,
@@ -248,6 +259,7 @@ def test_spot_async_order(
     async_order_id_buy = event_buy["asyncOrderId"]
 
     # settle the order
+    mine_block(snx, chain)
     settle_buy_tx = snx.spot.settle_order(
         async_order_id_buy, market_id=market_id, submit=True
     )
