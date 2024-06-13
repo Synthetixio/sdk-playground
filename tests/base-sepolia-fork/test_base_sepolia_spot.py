@@ -23,6 +23,7 @@ def test_spot_markets(snx):
     assert len(snx.spot.markets_by_name) == len(snx.spot.markets_by_id)
     assert "sUSD" in snx.spot.markets_by_name
     assert "sUSDC" in snx.spot.markets_by_name
+    assert "sStataUSDC" in snx.spot.markets_by_name
 
 
 @chain_fork
@@ -30,6 +31,7 @@ def test_spot_markets(snx):
     "token_name, test_amount, decimals",
     [
         ("USDC", TEST_AMOUNT, 6),
+        ("StataUSDC", TEST_AMOUNT, 6),
     ],
 )
 def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
@@ -106,6 +108,7 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
     "token_name, test_amount, decimals",
     [
         ("USDC", TEST_AMOUNT, 6),
+        ("StataUSDC", TEST_AMOUNT, 6),
     ],
 )
 def test_spot_atomic_order(snx, contracts, token_name, test_amount, decimals):

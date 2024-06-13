@@ -2,7 +2,7 @@ import os
 from functools import wraps
 import pytest
 from synthetix import Synthetix
-from synthetix.utils import ether_to_wei
+from synthetix.utils import ether_to_wei, format_wei, format_ether
 from ape import networks, chain
 
 
@@ -37,7 +37,14 @@ def snx():
             "preset": "andromeda",
         },
     )
+    mint_usdc(snx)
+    mint_ausdc(snx)
+    return snx
 
+
+@chain_fork
+def mint_usdc(snx):
+    """The instance can mint USDC tokens"""
     # check usdc balance
     usdc_package = snx.contracts["packages"]["usdc_mock_collateral"]["MintableToken"]
     usdc_contract = snx.web3.eth.contract(
@@ -45,13 +52,14 @@ def snx():
     )
 
     usdc_balance = usdc_contract.functions.balanceOf(snx.address).call()
-    usdc_balance = usdc_balance / 10**6
+    usdc_balance = format_wei(usdc_balance)
 
     # get some usdc
-    if usdc_balance < 100000:
+    mint_amount = max(100000 - usdc_balance, 0)
+    if mint_amount > 0:
         snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER])
 
-        mint_amount = int((100000 - usdc_balance) * 10**6)
+        mint_amount = format_ether(mint_amount, 6)
         tx_params = usdc_contract.functions.mint(
             mint_amount, snx.address
         ).build_transaction(
@@ -66,6 +74,8 @@ def snx():
         receipt = snx.wait(tx_hash)
         if receipt["status"] != 1:
             raise Exception("USDC Mint failed")
+        else:
+            snx.logger.info(f"USDC minted")
 
         # wrap some USDC
         approve_tx_1 = snx.approve(
@@ -75,6 +85,7 @@ def snx():
 
         wrap_tx = snx.spot.wrap(75000, market_name="sUSDC", submit=True)
         snx.wait(wrap_tx)
+        snx.logger.info(f"sUSDC wrapped")
 
         # sell some for sUSD
         approve_tx_2 = snx.spot.approve(
@@ -84,22 +95,113 @@ def snx():
 
         susd_tx = snx.spot.atomic_order("sell", 50000, market_name="sUSDC", submit=True)
         snx.wait(susd_tx)
+        snx.logger.info(f"sUSDC sold for sUSD")
 
-    return snx
 
+@chain_fork
+def mint_ausdc(snx):
+    """The instance can mint aUSDC tokens and vault tokens"""
+    # check ausdc balance
+    # aUSDC token
+    ausdc_package = snx.contracts["packages"]["ausdc_token_mock"]["MintableToken"]
+    ausdc = snx.web3.eth.contract(
+        address=ausdc_package["address"], abi=ausdc_package["abi"]
+    )
+
+    # stataUSDC oracle
+    statausdc_oracle_package = snx.contracts["packages"][
+        "erc_4626_to_assets_ratio_oracle"
+    ]["ERC4626ToAssetsRatioOracle"]
+    statausdc_oracle = snx.web3.eth.contract(
+        address=statausdc_oracle_package["address"],
+        abi=statausdc_oracle_package["abi"],
+    )
+
+    # stataUSDC vault
+    vault_address = statausdc_oracle.functions.VAULT_ADDRESS().call()
+    vault = snx.web3.eth.contract(
+        address=vault_address,
+        abi=snx.contracts["ERC4626"]["abi"],
+    )
+
+    ausdc_balance = ausdc.functions.balanceOf(snx.address).call()
+    ausdc_balance = format_wei(ausdc_balance, 6)
+
+    deposit_amount = 100000
+    mint_amount = max(deposit_amount - ausdc_balance, 0)
+    if mint_amount > 0:
+        mint_amount = format_ether(mint_amount, 6)
+        tx_params = ausdc.functions.mint(mint_amount, snx.address).build_transaction(
+            {
+                "from": snx.address,
+                "nonce": snx.web3.eth.get_transaction_count(snx.address),
+            }
+        )
+
+        # Send the transaction directly without signing
+        tx_hash = snx.web3.eth.send_transaction(tx_params)
+        receipt = snx.wait(tx_hash)
+        if receipt["status"] != 1:
+            raise Exception("aUSDC Mint failed")
+        else:
+            snx.logger.info(f"aUSDC minted")
+
+        # deposit to the vault
+        snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
+        approve_tx = snx.approve(ausdc.address, vault.address, submit=True)
+        snx.wait(approve_tx)
+
+    deposit_tx_params = vault.functions.mint(
+        format_ether(deposit_amount, 6), snx.address
+    ).build_transaction(
+        {
+            "from": snx.address,
+            "nonce": snx.web3.eth.get_transaction_count(snx.address),
+        }
+    )
+    deposit_tx = snx.web3.eth.send_transaction(deposit_tx_params)
+    deposit_receipt = snx.wait(deposit_tx)
+    snx.logger.info(f"aUSDC deposited")
 
 @pytest.fixture(scope="module")
 def contracts(snx):
     # create some needed contracts
     weth = snx.contracts["WETH"]["contract"]
 
+    # USDC token
     usdc_package = snx.contracts["packages"]["usdc_mock_collateral"]["MintableToken"]
     usdc = snx.web3.eth.contract(
         address=usdc_package["address"], abi=usdc_package["abi"]
     )
+
+    # aUSDC token
+    ausdc_package = snx.contracts["packages"]["ausdc_token_mock"]["MintableToken"]
+    ausdc = snx.web3.eth.contract(
+        address=ausdc_package["address"], abi=ausdc_package["abi"]
+    )
+
+    # stataUSDC oracle
+    statausdc_oracle_package = snx.contracts["packages"][
+        "erc_4626_to_assets_ratio_oracle"
+    ]["ERC4626ToAssetsRatioOracle"]
+    statausdc_oracle = snx.web3.eth.contract(
+        address=statausdc_oracle_package["address"],
+        abi=statausdc_oracle_package["abi"],
+    )
+
+    # stataUSDC vault
+    vault_address = statausdc_oracle.functions.VAULT_ADDRESS().call()
+    vault = snx.web3.eth.contract(
+        address=vault_address,
+        abi=snx.contracts["ERC4626"]["abi"],
+    )
+
     return {
         "WETH": weth,
         "USDC": usdc,
+        "aUSDC": ausdc,
+        "stataUSDCOracle": statausdc_oracle,
+        "StataUSDC": vault,
     }
 
 
