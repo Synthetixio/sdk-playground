@@ -1,11 +1,8 @@
 import time
 import pytest
-from dotenv import load_dotenv
 from synthetix.utils import ether_to_wei, wei_to_ether, format_wei
 from conftest import chain_fork
 from ape import chain
-
-load_dotenv()
 
 # constants
 TEST_AMOUNT = 100

@@ -1,9 +1,6 @@
 import pytest
-from dotenv import load_dotenv
 from synthetix.utils import ether_to_wei, wei_to_ether, format_wei
 from conftest import chain_fork
-
-load_dotenv()
 
 # constants
 TEST_AMOUNT = 100
@@ -102,7 +99,6 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
 
     assert unwrapped_balance == wrapped_balance + test_amount
     assert unwrapped_synth_balance == wrapped_synth_balance - test_amount
-
 
 
 @chain_fork

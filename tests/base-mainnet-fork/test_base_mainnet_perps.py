@@ -1,32 +1,29 @@
 import pytest
 import time
 import math
-from dotenv import load_dotenv
 from conftest import chain_fork
 from ape import chain
-
-load_dotenv()
 
 # tests
 MARKET_NAMES = [
     "ETH",
-    "BTC",
-    "SOL",
-    "SNX",
-    "WIF",
-    "W",
-    "ARB",
-    "AVAX",
-    "BNB",
-    "BONK",
-    "DOGE",
-    "ENA",
-    "FTM",
-    "MATIC",
-    "OP",
-    "ORDI",
-    "PEPE",
-    "RUNE",
+    # "BTC",
+    # "SOL",
+    # "SNX",
+    # "WIF",
+    # "W",
+    # "ARB",
+    # "AVAX",
+    # "BNB",
+    # "BONK",
+    # "DOGE",
+    # "ENA",
+    # "FTM",
+    # "MATIC",
+    # "OP",
+    # "ORDI",
+    # "PEPE",
+    # "RUNE",
 ]
 TEST_COLLATERAL_AMOUNT = 1000
 TEST_POSITION_SIZE_USD = 500

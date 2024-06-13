@@ -1,8 +1,5 @@
 import pytest
-from dotenv import load_dotenv
 from conftest import chain_fork
-
-load_dotenv()
 
 # constants
 USD_TEST_AMOUNT = 1000
