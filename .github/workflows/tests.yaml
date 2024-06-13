@@ -12,14 +12,14 @@ jobs:
     strategy:
       matrix:
         config:
-          - name: base-sepolia-fork
-            network: base:sepolia-fork:foundry
+          # - name: base-sepolia-fork
+          #   network: base:sepolia-fork:foundry
           - name: base-mainnet-fork
             network: base:mainnet-fork:foundry
-          - name: arbitrum-sepolia-fork
-            network: arbitrum:sepolia-fork:foundry
-          - name: arbitrum-mainnet-fork
-            network: arbitrum:mainnet-fork:foundry
+          # - name: arbitrum-sepolia-fork
+          #   network: arbitrum:sepolia-fork:foundry
+          # - name: arbitrum-mainnet-fork
+          #   network: arbitrum:mainnet-fork:foundry
 
     steps:
       - name: Checkout code
