@@ -4,7 +4,6 @@ from conftest import chain_fork
 # constants
 USD_TEST_AMOUNT = 1000
 
-
 # tests
 @chain_fork
 def test_core_module(snx):
@@ -18,6 +17,7 @@ def test_core_module(snx):
     "token_name, test_amount, decimals",
     [
         ("USDC", USD_TEST_AMOUNT, 6),
+        ("StataUSDC", USD_TEST_AMOUNT, 6),
     ],
 )
 def test_wrap_deposit_flow(
@@ -87,6 +87,7 @@ def test_wrap_deposit_flow(
     "token_name, test_amount, decimals",
     [
         ("USDC", USD_TEST_AMOUNT, 6),
+        ("StataUSDC", USD_TEST_AMOUNT, 6),
     ],
 )
 def test_wrap_delegate_flow(
