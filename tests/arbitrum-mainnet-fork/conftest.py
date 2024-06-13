@@ -1,12 +1,9 @@
 import os
 from functools import wraps
 import pytest
-from dotenv import load_dotenv
 from synthetix import Synthetix
 from synthetix.utils import ether_to_wei
 from ape import networks, chain
-
-load_dotenv()
 
 # constants
 SNX_DEPLOYER_ADDRESS = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"

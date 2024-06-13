@@ -1,13 +1,10 @@
 import os
 from functools import wraps
 import pytest
-from dotenv import load_dotenv
 from synthetix import Synthetix
 from synthetix.utils import ether_to_wei
 from ape import networks, chain
 
-
-load_dotenv()
 
 # find an address with a lot of usdc
 USDC_WHALE = "0xD34EA7278e6BD48DefE656bbE263aEf11101469c"
@@ -37,8 +34,8 @@ def snx():
         cannon_config={
             "package": "synthetix-omnibus",
             "version": "30",
-            "preset": "andromeda"
-        }
+            "preset": "andromeda",
+        },
     )
 
     # check usdc balance
@@ -98,7 +95,7 @@ def contracts(snx):
     }
 
 
-@chain_fork 
+@chain_fork
 @pytest.fixture(scope="module")
 def account_id(snx):
     # check if an account exists
@@ -139,3 +136,19 @@ def new_account_id(snx):
     new_account_id = account_ids[-1]
 
     yield new_account_id
+
+
+@chain_fork
+@pytest.fixture(scope="function")
+def core_account_id(snx):
+    # create a core account
+    tx_hash = snx.core.create_account(submit=True)
+    tx_receipt = snx.wait(tx_hash)
+
+    assert tx_hash is not None
+    assert tx_receipt is not None
+    assert tx_receipt.status == 1
+
+    account_id = snx.core.account_ids[-1]
+    snx.logger.info(f"Created core account: {account_id}")
+    return account_id

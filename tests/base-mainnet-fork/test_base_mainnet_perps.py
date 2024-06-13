@@ -1,11 +1,8 @@
 import pytest
 import time
 import math
-from dotenv import load_dotenv
 from conftest import chain_fork
 from ape import chain
-
-load_dotenv()
 
 # tests
 MARKET_NAMES = [

@@ -1,8 +1,5 @@
 from conftest import chain_fork
 from synthetix.utils import ether_to_wei, wei_to_ether
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # tests
 
