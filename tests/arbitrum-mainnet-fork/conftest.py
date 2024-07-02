@@ -11,6 +11,7 @@ USDC_WHALE = "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
 ARB_WHALE = "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
 USDE_WHALE = "0xb3C24D9dcCC2Ec5f778742389ffe448E295B84e0"
 
+
 def chain_fork(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -36,6 +37,7 @@ def snx(pytestconfig):
             "preset": "main",
         },
     )
+    update_prices(snx)
     steal_arb(snx)
     steal_usdc(snx)
     steal_usde(snx)
@@ -56,6 +58,31 @@ def contracts(snx):
         "ARB": arb,
         "USDe": usde,
     }
+
+
+@chain_fork
+def update_prices(snx):
+    pyth_contract = snx.contracts["Pyth"]["contract"]
+
+    # get feed ids
+    feed_ids = list(snx.pyth.price_feed_ids.values())
+
+    pyth_response = snx.pyth.get_price_from_ids(feed_ids)
+    price_update_data = pyth_response["price_update_data"]
+
+    # create the tx
+    tx_params = snx._get_tx_params(value=len(feed_ids))
+    tx_params = pyth_contract.functions.updatePriceFeeds(
+        price_update_data
+    ).build_transaction(tx_params)
+
+    # submit the tx
+    tx_hash = snx.execute_transaction(tx_params)
+    tx_receipt = snx.wait(tx_hash)
+    if tx_receipt["status"] != 1:
+        raise Exception("Price feed update failed")
+    else:
+        snx.logger.info("Price feeds updated")
 
 
 @chain_fork
@@ -140,7 +167,7 @@ def steal_usde(snx):
         send_tx_params = snx._get_tx_params(to=USDE_WHALE, value=ether_to_wei(1))
         send_tx_hash = snx.execute_transaction(send_tx_params)
         send_tx_receipt = snx.wait(send_tx_hash)
-        
+
         assert send_tx_hash is not None
         assert send_tx_receipt is not None
         assert send_tx_receipt.status == 1
@@ -167,6 +194,7 @@ def steal_usde(snx):
         assert receipt is not None
         assert receipt.status == 1
         snx.logger.info(f"Stole USDe from {USDE_WHALE}")
+
 
 @chain_fork
 def wrap_eth(snx):
