@@ -1,7 +1,7 @@
 name: playground
 
 test:
-  mnemonic: ${SEED}
+  mnemonic: test test test test test test test test test test test junk
   number_of_accounts: 10
 
 plugins:

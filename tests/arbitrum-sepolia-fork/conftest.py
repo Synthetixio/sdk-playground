@@ -7,14 +7,13 @@ from ape import networks, chain
 
 # constants
 SNX_DEPLOYER_ADDRESS = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
-USDC_WHALE = "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
-ARB_WHALE = "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
-USDE_WHALE = "0xb3C24D9dcCC2Ec5f778742389ffe448E295B84e0"
+USDC_WHALE = "0x6ED0C4ADDC308bb800096B8DaA41DE5ae219cd36"
+
 
 def chain_fork(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        with networks.parse_network_choice("arbitrum:mainnet-fork:foundry"):
+        with networks.parse_network_choice("arbitrum:sepolia-fork:foundry"):
             return func(*args, **kwargs)
 
     return wrapper
@@ -27,18 +26,18 @@ def snx(pytestconfig):
     # set up the snx instance
     snx = Synthetix(
         provider_rpc=chain.provider.uri,
-        network_id=42161,
+        network_id=421614,
         is_fork=True,
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
-            "version": "5",
+            "version": "11",
             "preset": "main",
         },
     )
-    steal_arb(snx)
+    mint_token(snx, "arb")
+    mint_token(snx, "USDe")
     steal_usdc(snx)
-    steal_usde(snx)
     wrap_eth(snx)
     return snx
 
@@ -48,8 +47,8 @@ def contracts(snx):
     # create some needed contracts
     weth = snx.contracts["WETH"]["contract"]
     usdc = snx.contracts["USDC"]["contract"]
-    arb = snx.contracts["ARB"]["contract"]
-    usde = snx.contracts["USDe"]["contract"]
+    arb = snx.contracts["arb_mock_collateral"]["MintableToken"]["contract"]
+    usde = snx.contracts["USDe_mock_collateral"]["MintableToken"]["contract"]
     return {
         "WETH": weth,
         "USDC": usdc,
@@ -59,24 +58,29 @@ def contracts(snx):
 
 
 @chain_fork
-def steal_arb(snx):
-    """The instance can steal ARB tokens"""
+def mint_token(snx, token_name):
+    """The instance can mint mintable tokens"""
     # check arb balance
-    arb_contract = snx.contracts["ARB"]["contract"]
-    arb_balance = arb_contract.functions.balanceOf(snx.address).call()
-    arb_balance = arb_balance / 10**18
+    token_contract = snx.contracts[f"{token_name}_mock_collateral"]["MintableToken"][
+        "contract"
+    ]
+    token_balance = token_contract.functions.balanceOf(snx.address).call()
+    token_balance = token_balance / 10**18
 
-    # get some arb
-    if arb_balance < 100000:
-        transfer_amount = int((100000 - arb_balance) * 10**18)
-        snx.web3.provider.make_request("anvil_impersonateAccount", [ARB_WHALE])
+    # mint some arb
+    mint_amount = max(100000 - token_balance, 0)
+    if mint_amount > 0:
+        snx.web3.provider.make_request(
+            "anvil_impersonateAccount", [SNX_DEPLOYER_ADDRESS]
+        )
 
-        tx_params = arb_contract.functions.transfer(
-            snx.address, transfer_amount
+        mint_amount = ether_to_wei(mint_amount)
+        tx_params = token_contract.functions.mint(
+            mint_amount, snx.address
         ).build_transaction(
             {
-                "from": ARB_WHALE,
-                "nonce": snx.web3.eth.get_transaction_count(ARB_WHALE),
+                "from": SNX_DEPLOYER_ADDRESS,
+                "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER_ADDRESS),
             }
         )
 
@@ -84,12 +88,9 @@ def steal_arb(snx):
         tx_hash = snx.web3.eth.send_transaction(tx_params)
         receipt = snx.wait(tx_hash)
         if receipt["status"] != 1:
-            raise Exception("ARB Transfer failed")
-
-        assert tx_hash is not None
-        assert receipt is not None
-        assert receipt.status == 1
-        snx.logger.info(f"Stole ARB from {ARB_WHALE}")
+            raise Exception(f"{token_name} Mint failed")
+        else:
+            snx.logger.info(f"{token_name} minted")
 
 
 @chain_fork
@@ -140,7 +141,7 @@ def steal_usde(snx):
         send_tx_params = snx._get_tx_params(to=USDE_WHALE, value=ether_to_wei(1))
         send_tx_hash = snx.execute_transaction(send_tx_params)
         send_tx_receipt = snx.wait(send_tx_hash)
-        
+
         assert send_tx_hash is not None
         assert send_tx_receipt is not None
         assert send_tx_receipt.status == 1
@@ -167,6 +168,7 @@ def steal_usde(snx):
         assert receipt is not None
         assert receipt.status == 1
         snx.logger.info(f"Stole USDe from {USDE_WHALE}")
+
 
 @chain_fork
 def wrap_eth(snx):
