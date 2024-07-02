@@ -33,7 +33,7 @@ def snx():
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
-            "version": "33",
+            "version": "37",
             "preset": "andromeda",
         },
     )
@@ -46,7 +46,7 @@ def snx():
 def mint_usdc(snx):
     """The instance can mint USDC tokens"""
     # check usdc balance
-    usdc_package = snx.contracts["packages"]["usdc_mock_collateral"]["MintableToken"]
+    usdc_package = snx.contracts["usdc_mock_collateral"]["MintableToken"]
     usdc_contract = snx.web3.eth.contract(
         address=usdc_package["address"], abi=usdc_package["abi"]
     )
@@ -103,15 +103,17 @@ def mint_ausdc(snx):
     """The instance can mint aUSDC tokens and vault tokens"""
     # check ausdc balance
     # aUSDC token
-    ausdc_package = snx.contracts["packages"]["ausdc_token_mock"]["MintableToken"]
+    ausdc_package = snx.contracts["erc_4626_to_assets_ratio_oracle"][
+        "ausdc_token_mock"
+    ]["MintableToken"]
     ausdc = snx.web3.eth.contract(
         address=ausdc_package["address"], abi=ausdc_package["abi"]
     )
 
     # stataUSDC oracle
-    statausdc_oracle_package = snx.contracts["packages"][
-        "erc_4626_to_assets_ratio_oracle"
-    ]["ERC4626ToAssetsRatioOracle"]
+    statausdc_oracle_package = snx.contracts["erc_4626_to_assets_ratio_oracle"][
+        "ERC4626ToAssetsRatioOracle"
+    ]
     statausdc_oracle = snx.web3.eth.contract(
         address=statausdc_oracle_package["address"],
         abi=statausdc_oracle_package["abi"],
@@ -121,7 +123,7 @@ def mint_ausdc(snx):
     vault_address = statausdc_oracle.functions.VAULT_ADDRESS().call()
     vault = snx.web3.eth.contract(
         address=vault_address,
-        abi=snx.contracts["ERC4626"]["abi"],
+        abi=snx.contracts["common"]["ERC4626"]["abi"],
     )
 
     ausdc_balance = ausdc.functions.balanceOf(snx.address).call()
@@ -163,27 +165,30 @@ def mint_ausdc(snx):
     deposit_receipt = snx.wait(deposit_tx)
     snx.logger.info(f"aUSDC deposited")
 
+
 @pytest.fixture(scope="module")
 def contracts(snx):
     # create some needed contracts
     weth = snx.contracts["WETH"]["contract"]
 
     # USDC token
-    usdc_package = snx.contracts["packages"]["usdc_mock_collateral"]["MintableToken"]
+    usdc_package = snx.contracts["usdc_mock_collateral"]["MintableToken"]
     usdc = snx.web3.eth.contract(
         address=usdc_package["address"], abi=usdc_package["abi"]
     )
 
     # aUSDC token
-    ausdc_package = snx.contracts["packages"]["ausdc_token_mock"]["MintableToken"]
+    ausdc_package = snx.contracts["erc_4626_to_assets_ratio_oracle"][
+        "ausdc_token_mock"
+    ]["MintableToken"]
     ausdc = snx.web3.eth.contract(
         address=ausdc_package["address"], abi=ausdc_package["abi"]
     )
 
     # stataUSDC oracle
-    statausdc_oracle_package = snx.contracts["packages"][
-        "erc_4626_to_assets_ratio_oracle"
-    ]["ERC4626ToAssetsRatioOracle"]
+    statausdc_oracle_package = snx.contracts["erc_4626_to_assets_ratio_oracle"][
+        "ERC4626ToAssetsRatioOracle"
+    ]
     statausdc_oracle = snx.web3.eth.contract(
         address=statausdc_oracle_package["address"],
         abi=statausdc_oracle_package["abi"],
@@ -193,7 +198,7 @@ def contracts(snx):
     vault_address = statausdc_oracle.functions.VAULT_ADDRESS().call()
     vault = snx.web3.eth.contract(
         address=vault_address,
-        abi=snx.contracts["ERC4626"]["abi"],
+        abi=snx.contracts["common"]["ERC4626"]["abi"],
     )
 
     return {
