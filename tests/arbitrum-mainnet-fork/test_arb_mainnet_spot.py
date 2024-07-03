@@ -116,9 +116,7 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
         ("USDC", TEST_AMOUNT, 6),
     ],
 )
-def test_spot_async_order(
-    snx, contracts, token_name, test_amount, decimals
-):
+def test_spot_async_order(snx, contracts, token_name, test_amount, decimals):
     """The instance can wrap USDC for sUSDC and commit an async order to sell for sUSD"""
     token = contracts[token_name]
     market_id = snx.spot.markets_by_name[f"s{token_name}"]["market_id"]
@@ -301,9 +299,7 @@ def test_spot_async_order(
         ("USDC", TEST_AMOUNT, 6),
     ],
 )
-def test_spot_atomic_order(
-    snx, contracts, token_name, test_amount, decimals
-):
+def test_spot_atomic_order(snx, contracts, token_name, test_amount, decimals):
     """The instance can wrap USDC for sUSDC and commit an atomic order to sell for sUSD"""
     token = contracts[token_name]
     market_id = snx.spot.markets_by_name[f"s{token_name}"]["market_id"]

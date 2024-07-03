@@ -21,7 +21,7 @@ def chain_fork(func):
 
 # fixtures
 @chain_fork
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def snx(pytestconfig):
     # set up the snx instance
     snx = Synthetix(

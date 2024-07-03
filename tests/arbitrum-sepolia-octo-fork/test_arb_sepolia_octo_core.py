@@ -21,7 +21,7 @@ def test_core_module(snx):
 @pytest.mark.parametrize(
     "token_name, test_amount, decimals",
     [
-        ("USDC", USD_TEST_AMOUNT, 18),
+        ("USDC", USD_TEST_AMOUNT, 6),
         ("WETH", WETH_TEST_AMOUNT, 18),
     ],
 )
@@ -77,7 +77,7 @@ def test_deposit_flow(
 @pytest.mark.parametrize(
     "token_name, test_amount, decimals",
     [
-        ("USDC", USD_TEST_AMOUNT, 18),
+        ("USDC", USD_TEST_AMOUNT, 6),
         ("WETH", WETH_TEST_AMOUNT, 18),
     ],
 )
@@ -133,7 +133,7 @@ def test_delegate_flow(
 @pytest.mark.parametrize(
     "token_name, test_amount, mint_amount, decimals",
     [
-        ("USDC", USD_TEST_AMOUNT, USD_MINT_AMOUNT, 18),
+        ("USDC", USD_TEST_AMOUNT, USD_MINT_AMOUNT, 6),
         ("WETH", WETH_TEST_AMOUNT, USD_MINT_AMOUNT, 18),
     ],
 )

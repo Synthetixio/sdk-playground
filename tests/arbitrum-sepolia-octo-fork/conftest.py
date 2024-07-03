@@ -26,7 +26,7 @@ def chain_fork(func):
 
 # fixtures
 @chain_fork
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def snx():
     # set up the snx instance
     snx = Synthetix(
@@ -35,13 +35,13 @@ def snx():
         is_fork=True,
         request_kwargs={"timeout": 120},
         cannon_config={
-            # "ipfs_hash": "QmZTdapuTNvbrPCBdth7xaex7nXinmR6MBkBhtDeGLkTxq",
             "package": "synthetix-omnibus",
             "version": "latest",
             "preset": "octopus",
         },
     )
     update_prices(snx)
+    set_timeout(snx)
     wrap_eth(snx)
     mint_btc(snx)
     mint_usdc(snx)
@@ -111,6 +111,30 @@ def mint_usdc(snx):
 
 
 @chain_fork
+def set_timeout(snx):
+    """Set the account activity timeout to zero"""
+    snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER])
+
+    tx_params = snx.core.core_proxy.functions.setConfig(
+        "0x6163636f756e7454696d656f7574576974686472617700000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+    ).build_transaction(
+        {
+            "from": SNX_DEPLOYER,
+            "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER),
+        }
+    )
+
+    # Send the transaction directly without signing
+    tx_hash = snx.web3.eth.send_transaction(tx_params)
+    receipt = snx.wait(tx_hash)
+    if receipt["status"] != 1:
+        raise Exception(f"Set timeout failed")
+    else:
+        snx.logger.info(f"Timeout set")
+
+
+@chain_fork
 def mint_usdx_with_usdc(snx):
     """The instance can mint USDx tokens using USDC as collateral"""
     # set up token contracts
@@ -118,9 +142,11 @@ def mint_usdx_with_usdc(snx):
     token = snx.web3.eth.contract(
         address=usdc_package["address"], abi=usdc_package["abi"]
     )
-    decimals = token.functions.decimals().call()
-    susd = snx.contracts['system']['USDProxy']
-    
+    usdc_decimals = token.functions.decimals().call()
+
+    susd = snx.contracts["system"]["USDProxy"]["contract"]
+    susd_decimals = susd.functions.decimals().call()
+
     # get an account
     create_account_tx = snx.core.create_account(submit=True)
     snx.wait(create_account_tx)
@@ -138,7 +164,7 @@ def mint_usdx_with_usdc(snx):
     deposit_tx_hash = snx.core.deposit(
         token.address,
         USDC_LP_AMOUNT,
-        decimals=decimals,
+        decimals=usdc_decimals,
         account_id=new_account_id,
         submit=True,
     )
@@ -169,8 +195,9 @@ def mint_usdx_with_usdc(snx):
 
     # withdraw
     withdraw_tx_hash = snx.core.withdraw(
-        susd.address,
         USDX_MINT_AMOUNT,
+        token_address=susd.address,
+        decimals=susd_decimals,
         account_id=new_account_id,
         submit=True,
     )
@@ -178,7 +205,7 @@ def mint_usdx_with_usdc(snx):
     assert withdraw_tx_receipt.status == 1
 
     # check balance
-    usdx_balance = snx.get_susd_balance(account_id)['balance']
+    usdx_balance = snx.get_susd_balance(account_id)["balance"]
     assert usdx_balance >= USDX_MINT_AMOUNT
 
 

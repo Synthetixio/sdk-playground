@@ -64,7 +64,8 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
         snx.wait(approve_tx)
 
     wrap_tx = snx.spot.wrap(test_amount, market_id=market_id, submit=True)
-    snx.wait(wrap_tx)
+    wrap_receipt = snx.wait(wrap_tx)
+    snx.logger.info(wrap_receipt)
 
     # get new balances
     wrapped_balance_wei = token.functions.balanceOf(snx.address).call()
@@ -108,7 +109,7 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
 @pytest.mark.parametrize(
     "token_name, test_amount, decimals",
     [
-        ("ETH", TEST_AMOUNT, 18),
+        ("WETH", TEST_AMOUNT, 18),
         ("BTC", TEST_AMOUNT, 18),
     ],
 )
