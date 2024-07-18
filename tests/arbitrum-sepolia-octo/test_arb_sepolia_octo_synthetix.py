@@ -1,16 +1,13 @@
-from conftest import chain_fork
 from synthetix.utils import ether_to_wei, wei_to_ether
 
 # tests
 
 
-@chain_fork
 def test_snx(snx):
     """The instance has a Synthetix instance"""
     assert snx is not None
 
 
-@chain_fork
 def test_contracts(contracts):
     """The instance has necessary contracts"""
     assert contracts["WETH"] is not None
@@ -18,10 +15,8 @@ def test_contracts(contracts):
     assert contracts["BTC"] is not None
 
 
-@chain_fork
 def test_wrap_eth(snx):
     """The instance can wrap ETH"""
-    snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
     tx_hash_wrap = snx.wrap_eth(0.01, submit=True)
     tx_receipt_wrap = snx.wait(tx_hash_wrap)
 

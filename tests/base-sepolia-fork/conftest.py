@@ -33,7 +33,7 @@ def snx():
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
-            "version": "37",
+            "version": "42",
             "preset": "andromeda",
         },
     )

@@ -1,11 +1,21 @@
+import time
 import pytest
 from synthetix.utils import ether_to_wei, wei_to_ether, format_wei
 from conftest import chain_fork
+from ape import chain
+import pdb
 
 # constants
 TEST_AMOUNT = 1
 
+
 # tests
+def mine_block(snx, chain, seconds=3):
+    time.sleep(seconds)
+    timestamp = int(time.time())
+
+    chain.mine(1, timestamp=timestamp)
+    snx.logger.info(f"Block mined at timestamp {timestamp}")
 
 
 @chain_fork
@@ -36,7 +46,7 @@ def test_spot_markets(snx):
 )
 def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
     """The instance can wrap and unwrap an asset"""
-    wrapped_token_name = 'sETH' if token_name == 'WETH' else f's{token_name}'
+    wrapped_token_name = "sETH" if token_name == "WETH" else f"s{token_name}"
     token = contracts[token_name]
     market_id = snx.spot.markets_by_name[wrapped_token_name]["market_id"]
     wrapped_token = snx.spot.markets_by_id[market_id]["contract"]
@@ -63,9 +73,24 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
         )
         snx.wait(approve_tx)
 
-    wrap_tx = snx.spot.wrap(test_amount, market_id=market_id, submit=True)
+    mine_block(snx, chain)
+    block = snx.web3.eth.get_block("latest")
+    snx.logger.info(f"Current block: {block['number']} {block['timestamp']}")
+    snx.logger.info(f"Block is {int(time.time()) - block['timestamp']} seconds old")
+
+    wrap_tx_params = snx.spot.wrap(test_amount, market_id=market_id, submit=False)
+
+    mine_block(snx, chain)
+    block = snx.web3.eth.get_block("latest")
+    snx.logger.info(f"Current block: {block['number']} {block['timestamp']}")
+    snx.logger.info(f"Block is {int(time.time()) - block['timestamp']} seconds old")
+
+    wrap_tx = snx.execute_transaction(wrap_tx_params)
+
     wrap_receipt = snx.wait(wrap_tx)
     snx.logger.info(wrap_receipt)
+    pdb.set_trace()
+    assert wrap_receipt.status == 1
 
     # get new balances
     wrapped_balance_wei = token.functions.balanceOf(snx.address).call()
@@ -92,8 +117,10 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
         )
         snx.wait(approve_tx)
 
+    # mine_block(snx, chain)
     unwrap_tx = snx.spot.wrap(-test_amount, market_id=market_id, submit=True)
-    snx.wait(unwrap_tx)
+    unwrap_receipt = snx.wait(unwrap_tx)
+    assert unwrap_receipt.status == 1
 
     # get new balances
     unwrapped_balance_wei = token.functions.balanceOf(snx.address).call()
@@ -144,8 +171,10 @@ def test_spot_atomic_order(snx, contracts, token_name, test_amount, decimals):
         )
         snx.wait(approve_tx)
 
+    # mine_block(snx, chain)
     wrap_tx = snx.spot.wrap(test_amount, market_id=market_id, submit=True)
-    snx.wait(wrap_tx)
+    wrap_receipt = snx.wait(wrap_tx)
+    assert wrap_receipt.status == 1
 
     # get new balances
     wrapped_balance_wei = token.functions.balanceOf(snx.address).call()

@@ -25,12 +25,13 @@ def chain_fork(func):
 
 
 # fixtures
-@chain_fork
+# @chain_fork
 @pytest.fixture(scope="package")
 def snx():
     # set up the snx instance
     snx = Synthetix(
-        provider_rpc=chain.provider.uri,
+        # provider_rpc=chain.provider.uri,
+        provider_rpc=os.getenv("LOCAL_RPC"),
         network_id=421614,
         is_fork=True,
         request_kwargs={"timeout": 120},
@@ -56,22 +57,23 @@ def update_prices(snx):
     # get feed ids
     feed_ids = list(snx.pyth.price_feed_ids.values())
 
-    pyth_response = snx.pyth.get_price_from_ids(feed_ids)
-    price_update_data = pyth_response["price_update_data"]
+    for feed_id in feed_ids:
+        pyth_response = snx.pyth.get_price_from_ids([feed_id])
+        price_update_data = pyth_response["price_update_data"]
 
-    # create the tx
-    tx_params = snx._get_tx_params(value=len(feed_ids))
-    tx_params = pyth_contract.functions.updatePriceFeeds(
-        price_update_data
-    ).build_transaction(tx_params)
+        # create the tx
+        tx_params = snx._get_tx_params(value=len(feed_ids))
+        tx_params = pyth_contract.functions.updatePriceFeeds(
+            price_update_data
+        ).build_transaction(tx_params)
 
-    # submit the tx
-    tx_hash = snx.execute_transaction(tx_params)
-    tx_receipt = snx.wait(tx_hash)
-    if tx_receipt["status"] != 1:
-        raise Exception("Price feed update failed")
-    else:
-        snx.logger.info("Price feeds updated")
+        # submit the tx
+        tx_hash = snx.execute_transaction(tx_params)
+        tx_receipt = snx.wait(tx_hash)
+        if tx_receipt["status"] != 1:
+            raise Exception("Price feed update failed")
+        else:
+            snx.logger.info(f"Price feed updated: {feed_id}")
 
 
 @chain_fork
@@ -272,6 +274,7 @@ def wrap_eth(snx):
     # check balance
     eth_balance = snx.get_eth_balance()
     if eth_balance["weth"] < 10:
+        snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
         tx_hash = snx.wrap_eth(10, submit=True)
         tx_receipt = snx.wait(tx_hash)
 

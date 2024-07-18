@@ -202,6 +202,7 @@ def wrap_eth(snx):
     # check balance
     eth_balance = snx.get_eth_balance()
     if eth_balance["weth"] < 10:
+        snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
         tx_hash = snx.wrap_eth(10, submit=True)
         tx_receipt = snx.wait(tx_hash)
 
