@@ -8,8 +8,8 @@ MARKET_NAMES = [
     "ETH",
     "BTC",
 ]
-TEST_USD_COLLATERAL_AMOUNT = 100
-TEST_ETH_COLLATERAL_AMOUNT = 0.1
+TEST_USD_COLLATERAL_AMOUNT = 1000
+TEST_ETH_COLLATERAL_AMOUNT = 0.001
 TEST_BTC_COLLATERAL_AMOUNT = 0.01
 TEST_POSITION_SIZE_USD = 50
 
@@ -44,51 +44,76 @@ def test_perps_markets(snx):
         assert market_summary["feed_id"] is not None
 
 
-def test_perps_account_fetch(snx, account_id):
+def test_perps_account_fetch(snx):
     """The instance can fetch account ids"""
     account_ids = snx.perps.get_account_ids()
     snx.logger.info(
         f"Address: {snx.address} - accounts: {len(account_ids)} - account_ids: {account_ids}"
     )
     assert len(account_ids) > 0
-    assert account_id in account_ids
 
 
-def test_modify_collateral(snx, account_id):
+@pytest.mark.parametrize(
+    "collateral_name, collateral_amount",
+    [
+        ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        ("sBTC", TEST_BTC_COLLATERAL_AMOUNT),
+        # ("sETH", TEST_ETH_COLLATERAL_AMOUNT),
+    ],
+)
+def test_modify_collateral(snx, new_account_id, collateral_name, collateral_amount):
     """Test modify collateral"""
+    # get collateral market id
+    collateral_id, collateral_name = snx.spot._resolve_market(market_id=None, market_name=collateral_name)
+
     # get starting collateral and sUSD balance
-    margin_info_start = snx.perps.get_margin_info(account_id)
+    snx.logger.info(f"Account: {new_account_id}")
+    margin_info_start = snx.perps.get_margin_info(new_account_id)
     susd_balance_start = snx.get_susd_balance()
 
     # check allowance
     allowance = snx.spot.get_allowance(
-        snx.perps.market_proxy.address, market_name="sUSD"
+        snx.perps.market_proxy.address, market_name=collateral_name
     )
-    if allowance < TEST_USD_COLLATERAL_AMOUNT:
+    if allowance < collateral_amount:
         approve_tx = snx.spot.approve(
-            snx.perps.market_proxy.address, market_name="sUSD", submit=True
+            snx.perps.market_proxy.address, market_name=collateral_name, submit=True
         )
         snx.wait(approve_tx)
 
     # modify collateral
     modify_tx = snx.perps.modify_collateral(
-        TEST_USD_COLLATERAL_AMOUNT, market_name="sUSD", account_id=account_id, submit=True
+        collateral_amount, market_name=collateral_name, account_id=new_account_id, submit=True
     )
-    snx.wait(modify_tx)
+    modify_receipt = snx.wait(modify_tx)
+    assert modify_receipt["status"] == 1
 
     # check the result
-    margin_info_end = snx.perps.get_margin_info(account_id)
-    susd_balance_end = snx.get_susd_balance()
+    margin_info_end = snx.perps.get_margin_info(new_account_id)
 
     assert (
         margin_info_end["total_collateral_value"]
         > margin_info_start["total_collateral_value"]
     )
-    assert susd_balance_end["balance"] < susd_balance_start["balance"]
-    assert (
-        susd_balance_end["balance"]
-        == susd_balance_start["balance"] - TEST_USD_COLLATERAL_AMOUNT
+    assert margin_info_end["collateral_balances"][collateral_id] == collateral_amount
+
+    # modify collateral
+    modify_tx_2 = snx.perps.modify_collateral(
+        -collateral_amount,
+        market_name=collateral_name,
+        account_id=new_account_id,
+        submit=True,
     )
+    modify_receipt_2 = snx.wait(modify_tx_2)
+    assert modify_receipt_2["status"] == 1
+
+    # check the result
+    margin_info_final = snx.perps.get_margin_info(new_account_id)
+
+    assert (
+        margin_info_final["total_collateral_value"] == 0
+    )
+    assert margin_info_final["collateral_balances"] == {}
 
 
 @pytest.mark.parametrize(
@@ -325,7 +350,7 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
     allowance = snx.spot.get_allowance(
         snx.perps.market_proxy.address, market_name="sUSD"
     )
-    if allowance < TEST_COLLATERAL_AMOUNT:
+    if allowance < TEST_USD_COLLATERAL_AMOUNT:
         approve_tx = snx.spot.approve(
             snx.perps.market_proxy.address, market_name="sUSD", submit=True
         )
@@ -333,7 +358,7 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
 
     # deposit collateral
     modify_tx = snx.perps.modify_collateral(
-        TEST_COLLATERAL_AMOUNT,
+        TEST_USD_COLLATERAL_AMOUNT,
         market_name="sUSD",
         account_id=new_account_id,
         submit=True,

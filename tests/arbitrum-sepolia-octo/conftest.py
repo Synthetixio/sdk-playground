@@ -98,35 +98,6 @@ def wrap_eth(snx):
         snx.logger.info(f"Wrapped ETH")
 
 
-@pytest.fixture(scope="module")
-def account_id(snx):
-    # check if an account exists
-    account_ids = snx.perps.get_account_ids()
-
-    final_account_id = None
-    for account_id in account_ids:
-        margin_info = snx.perps.get_margin_info(account_id)
-        positions = snx.perps.get_open_positions(account_id=account_id)
-
-        if margin_info["total_collateral_value"] == 0 and len(positions) == 0:
-            snx.logger.info(f"Account {account_id} is empty")
-            final_account_id = account_id
-            break
-        else:
-            snx.logger.info(f"Account {account_id} has margin")
-
-    if final_account_id is None:
-        snx.logger.info("Creating a new perps account")
-
-        create_tx = snx.perps.create_account(submit=True)
-        snx.wait(create_tx)
-
-        account_ids = snx.perps.get_account_ids()
-        final_account_id = account_ids[-1]
-
-    yield final_account_id
-
-
 @pytest.fixture(scope="function")
 def new_account_id(snx):
     snx.logger.info("Creating a new perps account")
