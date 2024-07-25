@@ -13,6 +13,5 @@ def test_snx(snx):
 def test_contracts(contracts):
     """The instance has necessary contracts"""
     assert contracts["WETH"] is not None
-    # assert contracts["USDC"] is not None
-    # assert contracts["ARB"] is not None
-    # assert contracts["USDe"] is not None
+    assert contracts["SNX"] is not None
+    assert contracts["sUSD"] is not None

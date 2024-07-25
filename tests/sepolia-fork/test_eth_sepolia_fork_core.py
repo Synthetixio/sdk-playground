@@ -8,6 +8,9 @@ USD_MINT_AMOUNT = 100
 WETH_TEST_AMOUNT = 1
 WETH_MINT_AMOUNT = 1000
 
+SNX_TEST_AMOUNT = 10000
+SNX_MINT_AMOUNT = 1000
+
 ARB_TEST_AMOUNT = 1000
 
 
@@ -23,7 +26,7 @@ def test_core_module(snx):
 @pytest.mark.parametrize(
     "token_name, test_amount, decimals",
     [
-        ("WETH", WETH_TEST_AMOUNT, 18),
+        ("SNX", SNX_TEST_AMOUNT, 18),
     ],
 )
 def test_deposit_flow(
@@ -78,7 +81,7 @@ def test_deposit_flow(
 @pytest.mark.parametrize(
     "token_name, test_amount, decimals",
     [
-        ("WETH", WETH_TEST_AMOUNT, 18),
+        ("SNX", SNX_TEST_AMOUNT, 18),
     ],
 )
 def test_delegate_flow(
@@ -99,6 +102,8 @@ def test_delegate_flow(
             token.address, snx.core.core_proxy.address, submit=True
         )
         snx.wait(approve_core_tx)
+    
+    withdrawable_usd_start = snx.core.core_proxy.functions.getWithdrawableMarketUsd(3).call() / 1e18
 
     # deposit the token
     deposit_tx_hash = snx.core.deposit(
@@ -127,13 +132,18 @@ def test_delegate_flow(
     assert delegate_tx_hash is not None
     assert delegate_tx_receipt is not None
     assert delegate_tx_receipt.status == 1
+    
+    withdrawable_usd_end = snx.core.core_proxy.functions.getWithdrawableMarketUsd(3).call() / 1e18
+    snx.logger.info(f"withdrawable_usd_start: {withdrawable_usd_start}")
+    snx.logger.info(f"withdrawable_usd_end: {withdrawable_usd_end}")
+
 
 
 @chain_fork
 @pytest.mark.parametrize(
     "token_name, test_amount, mint_amount, decimals",
     [
-        ("WETH", WETH_TEST_AMOUNT, USD_MINT_AMOUNT, 18),
+        ("SNX", SNX_TEST_AMOUNT, SNX_MINT_AMOUNT, 18),
     ],
 )
 def test_account_delegate_mint(
