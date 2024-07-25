@@ -30,8 +30,7 @@ def chain_fork(func):
 def snx():
     # set up the snx instance
     snx = Synthetix(
-        # provider_rpc=chain.provider.uri,
-        provider_rpc=os.getenv("LOCAL_RPC"),
+        provider_rpc=chain.provider.uri,
         network_id=421614,
         is_fork=True,
         request_kwargs={"timeout": 120},

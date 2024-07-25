@@ -88,8 +88,6 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
     wrap_tx = snx.execute_transaction(wrap_tx_params)
 
     wrap_receipt = snx.wait(wrap_tx)
-    snx.logger.info(wrap_receipt)
-    pdb.set_trace()
     assert wrap_receipt.status == 1
 
     # get new balances

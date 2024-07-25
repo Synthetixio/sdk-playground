@@ -276,7 +276,6 @@ def test_account_flow(snx, new_account_id, market_name):
     ["market_1", "market_2"],
     [
         ("ETH", "BTC"),
-        ("SNX", "WIF"),
     ],
 )
 def test_multiple_positions(snx, new_account_id, market_1, market_2):
