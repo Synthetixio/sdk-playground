@@ -2,22 +2,22 @@
 
 This repository contains a suite of tests, scripts, and notebook templates to get started using the Synthetix [Python SDK](https://github.com/Synthetixio/python-sdk) and interacting with the protocol. Visit [tests](tests/README.md) for more information on testing contracts and creating test environments.
 
-## Getting Started
+## Installation
 
 1. Before you begin, ensure you have:
 * An API key from [Alchemy](https://www.alchemy.com/)
-* A wallet address **and** the private key for that address
-* Installed Python 3.8 or greater
+* A wallet address **and** the private key for that address (optional)
+* Installed Python 3.10 or greater
     * Run `python --version` in your terminal to check
 
-2. Download this repository to a preferred location on your computer. Here's how:
+2. Clone this repository:
 
 ```bash
 git clone https://github.com/Synthetixio/sdk-playground.git
 cd project-template-python
 ```
 
-3. Set up the required packages in a virtual environment:
+3. Set up a virtual environment:
 
 ```bash
 python3 -m venv env
@@ -43,7 +43,7 @@ curl -L https://foundry.paradigm.xyz | bash
 foundryup
 ```
 
-6. Make a copy of the .env.example file, name it .env, and then enter the details for your RPC and wallet.
+6. Make a copy of the `.env.example` file, name it .env, and then enter the details for your RPC and wallet.
 
 
 The private key is optional. If one is not provided, the SDK will simulate the specified address, but transaction signing will be disabled.
