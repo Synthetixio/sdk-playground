@@ -38,6 +38,8 @@ ape test tests/arbitrum-sepolia-octo/ --arbitrum:sepolia:alchemy
 ape test tests/arbitrum-sepolia-octo-fork/test_arbitrum_sepolia_octo_perps.py --arbitrum:sepolia-fork:foundry
 ```
 
+Tests that run on forked networks should seed an RPC signer account with the necessary tokens and balances to run the tests. When running on live networks, ensure that you're providing an address and private key in the `.env` file. Ensure that the account has the necessary tokens and balances to run the tests.
+
 ## Configuration
 
 Test configuration is managed through `conftest.py` files in each test subdirectory. These files set up fixtures and other test-specific configurations.
