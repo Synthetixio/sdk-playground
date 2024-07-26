@@ -4,7 +4,7 @@ import pytest
 from synthetix import Synthetix
 from synthetix.utils import ether_to_wei, wei_to_ether, format_wei, format_ether
 from ape import networks, chain
-
+from utils.arb_helpers import mock_arb_precompiles
 
 # constants
 SNX_DEPLOYER = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
@@ -40,6 +40,7 @@ def snx():
             "preset": "octopus",
         },
     )
+    mock_arb_precompiles(snx)
     update_prices(snx)
     set_timeout(snx)
     wrap_eth(snx)
@@ -56,23 +57,22 @@ def update_prices(snx):
     # get feed ids
     feed_ids = list(snx.pyth.price_feed_ids.values())
 
-    for feed_id in feed_ids:
-        pyth_response = snx.pyth.get_price_from_ids([feed_id])
-        price_update_data = pyth_response["price_update_data"]
+    pyth_response = snx.pyth.get_price_from_ids(feed_ids)
+    price_update_data = pyth_response["price_update_data"]
 
-        # create the tx
-        tx_params = snx._get_tx_params(value=len(feed_ids))
-        tx_params = pyth_contract.functions.updatePriceFeeds(
-            price_update_data
-        ).build_transaction(tx_params)
+    # create the tx
+    tx_params = snx._get_tx_params(value=len(feed_ids))
+    tx_params = pyth_contract.functions.updatePriceFeeds(
+        price_update_data
+    ).build_transaction(tx_params)
 
-        # submit the tx
-        tx_hash = snx.execute_transaction(tx_params)
-        tx_receipt = snx.wait(tx_hash)
-        if tx_receipt["status"] != 1:
-            raise Exception("Price feed update failed")
-        else:
-            snx.logger.info(f"Price feed updated: {feed_id}")
+    # submit the tx
+    tx_hash = snx.execute_transaction(tx_params)
+    tx_receipt = snx.wait(tx_hash)
+    if tx_receipt["status"] != 1:
+        raise Exception("Price feed update failed")
+    else:
+        snx.logger.info("Price feeds updated")
 
 
 @chain_fork

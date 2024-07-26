@@ -4,6 +4,7 @@ import pytest
 from synthetix import Synthetix
 from synthetix.utils import ether_to_wei
 from ape import networks, chain
+from utils.arb_helpers import mock_arb_precompiles
 
 # constants
 SNX_DEPLOYER_ADDRESS = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
@@ -35,6 +36,7 @@ def snx(pytestconfig):
             "preset": "main",
         },
     )
+    mock_arb_precompiles(snx)
     update_prices(snx)
     mint_token(snx, "arb")
     mint_token(snx, "USDe")
