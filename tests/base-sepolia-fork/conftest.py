@@ -22,7 +22,7 @@ def chain_fork(func):
 
 # fixtures
 @chain_fork
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def snx():
     # set up the snx instance
     snx = Synthetix(
@@ -33,13 +33,39 @@ def snx():
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
-            "version": "37",
+            "version": "42",
             "preset": "andromeda",
         },
     )
+    update_prices(snx)
     mint_usdc(snx)
     mint_ausdc(snx)
     return snx
+
+
+@chain_fork
+def update_prices(snx):
+    pyth_contract = snx.contracts["Pyth"]["contract"]
+
+    # get feed ids
+    feed_ids = list(snx.pyth.price_feed_ids.values())
+
+    pyth_response = snx.pyth.get_price_from_ids(feed_ids)
+    price_update_data = pyth_response["price_update_data"]
+
+    # create the tx
+    tx_params = snx._get_tx_params(value=len(feed_ids))
+    tx_params = pyth_contract.functions.updatePriceFeeds(
+        price_update_data
+    ).build_transaction(tx_params)
+
+    # submit the tx
+    tx_hash = snx.execute_transaction(tx_params)
+    tx_receipt = snx.wait(tx_hash)
+    if tx_receipt["status"] != 1:
+        raise Exception("Price feed update failed")
+    else:
+        snx.logger.info("Price feeds updated")
 
 
 @chain_fork
