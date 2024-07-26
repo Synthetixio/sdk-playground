@@ -21,7 +21,6 @@ def test_contracts(contracts):
 @chain_fork
 def test_wrap_eth(snx):
     """The instance can wrap ETH"""
-    snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
     tx_hash_wrap = snx.wrap_eth(0.01, submit=True)
     tx_receipt_wrap = snx.wait(tx_hash_wrap)
 

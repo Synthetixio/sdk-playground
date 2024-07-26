@@ -175,6 +175,7 @@ def test_modify_collateral(snx, account_id):
     "market_name",
     MARKET_NAMES,
 )
+@pytest.mark.skip(reason="Skip due to missing Arbitrum precompiles for the gas oracle")
 def test_account_flow(snx, new_account_id, market_name):
     mine_block(snx, chain, seconds=0)
 
@@ -278,6 +279,7 @@ def test_account_flow(snx, new_account_id, market_name):
         ("ETH", "BTC"),
     ],
 )
+@pytest.mark.skip(reason="Skip due to missing Arbitrum precompiles for the gas oracle")
 def test_multiple_positions(snx, new_account_id, market_1, market_2):
     mine_block(snx, chain, seconds=0)
 
