@@ -1,6 +1,6 @@
 # SDK Playground
 
-This is a sample repository with some ideas using the [Python SDK](https://github.com/Synthetixio/python-sdk).
+This repository contains a suite of tests, scripts, and notebook templates to get started using the Synthetix [Python SDK](https://github.com/Synthetixio/python-sdk) and interacting with the protocol. Visit [tests](tests/README.md) for more information on testing contracts and creating test environments.
 
 ## Getting Started
 
@@ -33,7 +33,17 @@ pip install -r requirements.txt
 ape plugins install .
 ```
 
-5. Make a copy of the .env.example file, name it .env, and then enter the details for your RPC and wallet.
+5. Install [Foundry](https://github.com/foundry-rs/foundry):
+
+Review the [installation guide](https://book.getfoundry.sh/getting-started/installation) or run the following:
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+
+# install foundry
+foundryup
+```
+
+6. Make a copy of the .env.example file, name it .env, and then enter the details for your RPC and wallet.
 
 
 The private key is optional. If one is not provided, the SDK will simulate the specified address, but transaction signing will be disabled.
