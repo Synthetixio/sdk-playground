@@ -17,7 +17,8 @@ foundry:
       mainnet:
         upstream_provider: alchemy
       sepolia:
-        upstream_provider: alchemy
+        # run from local fork running on cannon 
+        upstream_provider: "http://localhost:8545"
     base:
       mainnet:
         upstream_provider: alchemy

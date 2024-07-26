@@ -8,7 +8,6 @@ from ape import networks, chain
 
 # constants
 SNX_DEPLOYER_ADDRESS = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
-USDC_WHALE = "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
 
 SNX_LIQUIDITY_AMOUNT = 500000
 SUSD_MINT_AMOUNT = 500
@@ -42,7 +41,7 @@ def snx(pytestconfig):
         request_kwargs={"timeout": 120},
         # local deployment
         ipfs_gateway="http://127.0.0.1:8080/ipfs/",
-        cannon_config={"ipfs_hash": "QmdsxSMNuz2EvRY98yWsSbiFd1me68C59h5Ftfv5k13ULG"},
+        cannon_config={"ipfs_hash": "QmV8mQ7cE5JJ8ZTHn8PQGR7SLFNL6sFFijBYaPsDbrBMvy"},
     )
     mine_block(snx, chain)
     update_prices(snx)
