@@ -5,6 +5,7 @@ from synthetix import Synthetix
 from synthetix.utils import ether_to_wei, wei_to_ether, format_wei, format_ether
 from ape import networks, chain
 from utils.arb_helpers import mock_arb_precompiles
+from utils.chain_helpers import mine_block
 
 # constants
 SNX_DEPLOYER = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
@@ -25,7 +26,7 @@ def chain_fork(func):
 
 
 # fixtures
-# @chain_fork
+@chain_fork
 @pytest.fixture(scope="package")
 def snx():
     # set up the snx instance
@@ -39,14 +40,16 @@ def snx():
             "version": "latest",
             "preset": "octopus",
         },
+        pyth_cache_ttl=0,
     )
     mock_arb_precompiles(snx)
-    update_prices(snx)
     set_timeout(snx)
     wrap_eth(snx)
     mint_btc(snx)
     mint_usdc(snx)
     mint_usdx_with_usdc(snx)
+    mine_block(snx, chain)
+    update_prices(snx)
     return snx
 
 
@@ -59,6 +62,11 @@ def update_prices(snx):
 
     pyth_response = snx.pyth.get_price_from_ids(feed_ids)
     price_update_data = pyth_response["price_update_data"]
+
+    # print the update timestamps:
+    for feed_id in feed_ids:
+        meta = pyth_response["meta"][feed_id]
+        snx.logger.info(f"Updating {meta['symbol']} at {meta['publish_time']}")
 
     # create the tx
     tx_params = snx._get_tx_params(value=len(feed_ids))

@@ -1,7 +1,7 @@
 import time
 import pytest
 from synthetix.utils import ether_to_wei, wei_to_ether, format_wei
-from conftest import chain_fork
+from conftest import chain_fork, update_prices
 from ape import chain
 import pdb
 
@@ -62,11 +62,7 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
     ## wrap
     # check the allowance
     allowance = snx.allowance(token.address, snx.spot.market_proxy.address)
-
     if allowance < test_amount:
-        # reset nonce manually to avoid nonce issues
-        snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
-
         # approve
         approve_tx = snx.approve(
             token.address, snx.spot.market_proxy.address, submit=True
