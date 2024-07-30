@@ -1,21 +1,15 @@
 import time
 import pytest
 from synthetix.utils import ether_to_wei, wei_to_ether, format_wei
-from conftest import chain_fork
+from conftest import chain_fork, update_prices
 from ape import chain
-import pdb
+from utils.chain_helpers import mine_block
 
 # constants
 TEST_AMOUNT = 1
 
 
 # tests
-def mine_block(snx, chain, seconds=3):
-    time.sleep(seconds)
-    timestamp = int(time.time())
-
-    chain.mine(1, timestamp=timestamp)
-    snx.logger.info(f"Block mined at timestamp {timestamp}")
 
 
 @chain_fork
@@ -62,11 +56,7 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
     ## wrap
     # check the allowance
     allowance = snx.allowance(token.address, snx.spot.market_proxy.address)
-
     if allowance < test_amount:
-        # reset nonce manually to avoid nonce issues
-        snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
-
         # approve
         approve_tx = snx.approve(
             token.address, snx.spot.market_proxy.address, submit=True

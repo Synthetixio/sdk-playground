@@ -4,6 +4,7 @@ import pytest
 from synthetix import Synthetix
 from synthetix.utils import ether_to_wei
 from ape import networks, chain
+from utils.arb_helpers import mock_arb_precompiles
 
 # constants
 SNX_DEPLOYER_ADDRESS = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
@@ -35,6 +36,7 @@ def snx(pytestconfig):
             "preset": "main",
         },
     )
+    mock_arb_precompiles(snx)
     update_prices(snx)
     mint_token(snx, "arb")
     mint_token(snx, "USDe")
@@ -209,6 +211,19 @@ def wrap_eth(snx):
         assert tx_receipt is not None
         assert tx_receipt.status == 1
         snx.logger.info(f"Wrapped ETH")
+
+
+@chain_fork
+@pytest.fixture(scope="function")
+def perps_account_id(snx):
+    snx.logger.info("Creating a new perps account")
+    create_tx = snx.perps.create_account(submit=True)
+    snx.wait(create_tx)
+
+    account_ids = snx.perps.get_account_ids()
+    new_account_id = account_ids[-1]
+
+    yield new_account_id
 
 
 @chain_fork

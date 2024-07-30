@@ -3,91 +3,17 @@ import time
 import math
 from conftest import chain_fork
 from ape import chain
+from utils.chain_helpers import mine_block
 
 # tests
 MARKET_NAMES = [
     "ETH",
-    # "BTC",
-    # "SNX",
-    # "SOL",
-    # "WIF",
-    # "W",
-    # "ARB",
-    # "AVAX",
-    # "BNB",
-    # "BONK",
-    # "DOGE",
-    # "ENA",
-    # "FTM",
-    # "MATIC",
-    # "OP",
-    # "ORDI",
-    # "PEPE",
-    # "RUNE",
-    # "ARKM",
-    # "AXL",
-    # "BOME",
-    # "ETHFI",
-    # "GALA",
-    # "GMX",
-    # "INJ",
-    # "LINK",
-    # "PENDLE",
-    # "STX",
-    # "SUI",
-    # "TAO",
-    # "TIA",
-    # "TON",
-    # "AAVE",
-    # "ADA",
-    # "ALGO",
-    # "APT",
-    # "ATOM",
-    # "AXS",
-    # "BAL",
-    # "BCH",
-    # "BLUR",
-    # "COMP",
-    # "CRV",
-    # "DOT",
-    # "DYDX",
-    # "EOS",
-    # "ETC",
-    # "ETHBTC",
-    # "FIL",
-    # "FLOW",
-    # "FXS",
-    # "GRT",
-    # "ICP",
-    # "IMX",
-    # "JTO",
-    # "JUP",
-    # "LDO",
-    # "LTC",
-    # "MEME",
-    # "NEAR",
-    # "PYTH",
-    # "RNDR",
-    # "SEI",
-    # "SHIB",
-    # "STRK",
-    # "SUSHI",
-    # "TRX",
-    # "UNI",
-    # "XLM",
-    # "XRP",
-    # "YFI",
+    "BTC",
 ]
-TEST_COLLATERAL_AMOUNT = 1000
-TEST_POSITION_SIZE_USD = 500
-
-
-def mine_block(snx, chain, seconds=3):
-    time.sleep(seconds)
-    timestamp = int(time.time())
-
-    chain.mine(1, timestamp=timestamp)
-    snx.logger.info(f"Block mined at timestamp {timestamp}")
+TEST_USD_COLLATERAL_AMOUNT = 1000
+TEST_ETH_COLLATERAL_AMOUNT = 0.5
+TEST_BTC_COLLATERAL_AMOUNT = 0.01
+TEST_POSITION_SIZE_USD = 50
 
 
 def test_perps_module(snx):
@@ -121,85 +47,138 @@ def test_perps_markets(snx):
         assert market_summary["feed_id"] is not None
 
 
-@chain_fork
-def test_perps_account_fetch(snx, account_id):
+def test_perps_account_fetch(snx, new_account_id):
     """The instance can fetch account ids"""
     account_ids = snx.perps.get_account_ids()
     snx.logger.info(
         f"Address: {snx.address} - accounts: {len(account_ids)} - account_ids: {account_ids}"
     )
     assert len(account_ids) > 0
-    assert account_id in account_ids
+    assert new_account_id in account_ids
 
 
-@chain_fork
-def test_modify_collateral(snx, account_id):
+@pytest.mark.parametrize(
+    "collateral_name, collateral_amount",
+    [
+        ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        ("sBTC", TEST_BTC_COLLATERAL_AMOUNT),
+        ("sETH", TEST_ETH_COLLATERAL_AMOUNT),
+    ],
+)
+def test_modify_collateral(
+    snx, contracts, new_account_id, collateral_name, collateral_amount
+):
     """Test modify collateral"""
+    # get collateral market id
+    collateral_id, collateral_name = snx.spot._resolve_market(
+        market_id=None, market_name=collateral_name
+    )
+
     # get starting collateral and sUSD balance
-    margin_info_start = snx.perps.get_margin_info(account_id)
+    snx.logger.info(f"Account: {new_account_id}")
+    margin_info_start = snx.perps.get_margin_info(new_account_id)
     susd_balance_start = snx.get_susd_balance()
 
     # check allowance
     allowance = snx.spot.get_allowance(
-        snx.perps.market_proxy.address, market_name="sUSD"
+        snx.perps.market_proxy.address, market_name=collateral_name
     )
-    if allowance < TEST_COLLATERAL_AMOUNT:
+    if allowance < collateral_amount:
         approve_tx = snx.spot.approve(
-            snx.perps.market_proxy.address, market_name="sUSD", submit=True
+            snx.perps.market_proxy.address, market_name=collateral_name, submit=True
         )
         snx.wait(approve_tx)
+
+    # if not sUSD, wrap the asset first
+    if collateral_name != "sUSD":
+        # get the token
+        token_name = collateral_name[1:] if collateral_name != "sETH" else "WETH"
+        token = contracts[token_name]
+
+        # check the allowance
+        allowance = snx.allowance(token.address, snx.spot.market_proxy.address)
+        if allowance < collateral_amount:
+            # approve
+            approve_tx = snx.approve(
+                token.address, snx.spot.market_proxy.address, submit=True
+            )
+            snx.wait(approve_tx)
+
+        wrap_tx = snx.spot.wrap(
+            collateral_amount, market_name=collateral_name, submit=True
+        )
+        wrap_receipt = snx.wait(wrap_tx)
+        assert wrap_receipt.status == 1
 
     # modify collateral
     modify_tx = snx.perps.modify_collateral(
-        TEST_COLLATERAL_AMOUNT, market_name="sUSD", account_id=account_id, submit=True
-    )
-    snx.wait(modify_tx)
-
-    # check the result
-    margin_info_end = snx.perps.get_margin_info(account_id)
-    susd_balance_end = snx.get_susd_balance()
-
-    assert (
-        margin_info_end["total_collateral_value"]
-        > margin_info_start["total_collateral_value"]
-    )
-    assert susd_balance_end["balance"] < susd_balance_start["balance"]
-    assert (
-        susd_balance_end["balance"]
-        == susd_balance_start["balance"] - TEST_COLLATERAL_AMOUNT
-    )
-
-
-@chain_fork
-@pytest.mark.parametrize(
-    "market_name",
-    MARKET_NAMES,
-)
-@pytest.mark.skip(reason="Skip due to missing Arbitrum precompiles for the gas oracle")
-def test_account_flow(snx, new_account_id, market_name):
-    mine_block(snx, chain, seconds=0)
-
-    # check allowance
-    allowance = snx.spot.get_allowance(
-        snx.perps.market_proxy.address, market_name="sUSD"
-    )
-    if allowance < TEST_COLLATERAL_AMOUNT:
-        approve_tx = snx.spot.approve(
-            snx.perps.market_proxy.address, market_name="sUSD", submit=True
-        )
-        snx.wait(approve_tx)
-
-    # deposit collateral
-    modify_tx = snx.perps.modify_collateral(
-        TEST_COLLATERAL_AMOUNT,
-        market_name="sUSD",
+        collateral_amount,
+        market_name=collateral_name,
         account_id=new_account_id,
         submit=True,
     )
     modify_receipt = snx.wait(modify_tx)
     assert modify_receipt["status"] == 1
 
-    # check the price
+    # check the result
+    margin_info_end = snx.perps.get_margin_info(new_account_id)
+
+    assert (
+        margin_info_end["total_collateral_value"]
+        > margin_info_start["total_collateral_value"]
+    )
+    assert margin_info_end["collateral_balances"][collateral_id] == collateral_amount
+
+    # modify collateral
+    modify_tx_2 = snx.perps.modify_collateral(
+        -collateral_amount,
+        market_name=collateral_name,
+        account_id=new_account_id,
+        submit=True,
+    )
+    modify_receipt_2 = snx.wait(modify_tx_2)
+    assert modify_receipt_2["status"] == 1
+
+    # check the result
+    margin_info_final = snx.perps.get_margin_info(new_account_id)
+
+    assert margin_info_final["total_collateral_value"] == 0
+    assert margin_info_final["collateral_balances"] == {}
+
+
+@chain_fork
+@pytest.mark.parametrize(
+    "market_name, collateral_name, collateral_amount",
+    [
+        ("ETH", "sUSD", TEST_USD_COLLATERAL_AMOUNT),
+    ],
+)
+def test_usd_account_flow(
+    snx, new_account_id, market_name, collateral_name, collateral_amount
+):
+    mine_block(snx, chain)
+
+    # check allowance
+    allowance = snx.spot.get_allowance(
+        snx.perps.market_proxy.address, market_name=collateral_name
+    )
+    if allowance < collateral_amount:
+        approve_tx = snx.spot.approve(
+            snx.perps.market_proxy.address, market_name=collateral_name, submit=True
+        )
+        snx.wait(approve_tx)
+
+    # deposit collateral
+    modify_tx = snx.perps.modify_collateral(
+        collateral_amount,
+        market_name=collateral_name,
+        account_id=new_account_id,
+        submit=True,
+    )
+    modify_receipt = snx.wait(modify_tx)
+    assert modify_receipt["status"] == 1
+
+    # get an updated price
     index_price = snx.perps.markets_by_name[market_name]["index_price"]
 
     # commit order
@@ -263,8 +242,8 @@ def test_account_flow(snx, new_account_id, market_name):
     withdrawable_margin = math.floor(withdrawable_margin * 1e8) / 1e8
 
     modify_tx_2 = snx.perps.modify_collateral(
-        -withdrawable_margin,
-        market_name="sUSD",
+        withdrawable_margin,
+        market_name=collateral_name,
         account_id=new_account_id,
         submit=True,
     )
@@ -274,20 +253,170 @@ def test_account_flow(snx, new_account_id, market_name):
 
 @chain_fork
 @pytest.mark.parametrize(
+    "market_name, collateral_name, collateral_amount",
+    [
+        ("ETH", "sBTC", TEST_BTC_COLLATERAL_AMOUNT),
+        ("ETH", "sETH", TEST_ETH_COLLATERAL_AMOUNT),
+    ],
+)
+def test_alt_account_flow(
+    snx, contracts, new_account_id, market_name, collateral_name, collateral_amount
+):
+    # get the token
+    token_name = collateral_name[1:] if collateral_name != "sETH" else "WETH"
+    token = contracts[token_name]
+
+    # check the allowance
+    allowance = snx.allowance(token.address, snx.spot.market_proxy.address)
+    if allowance < collateral_amount:
+        # approve
+        approve_tx = snx.approve(
+            token.address, snx.spot.market_proxy.address, submit=True
+        )
+        approve_receipt = snx.wait(approve_tx)
+
+    wrap_tx = snx.spot.wrap(collateral_amount, market_name=collateral_name, submit=True)
+    wrap_receipt = snx.wait(wrap_tx)
+    assert wrap_receipt.status == 1
+
+    # check allowances
+    allowance = snx.spot.get_allowance(
+        snx.perps.market_proxy.address, market_name=collateral_name
+    )
+    if allowance < collateral_amount:
+        approve_tx = snx.spot.approve(
+            snx.perps.market_proxy.address, market_name=collateral_name, submit=True
+        )
+        snx.wait(approve_tx)
+
+    # deposit collateral
+    modify_tx = snx.perps.modify_collateral(
+        collateral_amount,
+        market_name=collateral_name,
+        account_id=new_account_id,
+        submit=True,
+    )
+    modify_receipt = snx.wait(modify_tx)
+    assert modify_receipt["status"] == 1
+
+    # check the price
+    index_price = snx.perps.markets_by_name[market_name]["index_price"]
+
+    # commit order
+    mine_block(snx, chain)
+    position_size = TEST_POSITION_SIZE_USD / index_price
+    commit_tx = snx.perps.commit_order(
+        position_size,
+        market_name=market_name,
+        account_id=new_account_id,
+        settlement_strategy_id=0,
+        submit=True,
+    )
+    commit_receipt = snx.wait(commit_tx)
+    assert commit_receipt["status"] == 1
+
+    # wait for the order settlement
+    mine_block(snx, chain)
+    settle_tx = snx.perps.settle_order(
+        account_id=new_account_id, max_tx_tries=5, submit=True
+    )
+    settle_receipt = snx.wait(settle_tx)
+
+    # check the result
+    position = snx.perps.get_open_position(
+        market_name=market_name, account_id=new_account_id
+    )
+    assert round(position["position_size"], 12) == round(position_size, 12)
+
+    # get the position size
+    position = snx.perps.get_open_position(
+        market_name=market_name, account_id=new_account_id
+    )
+    size = position["position_size"]
+
+    # commit order
+    mine_block(snx, chain)
+    commit_tx_2 = snx.perps.commit_order(
+        -size,
+        market_name=market_name,
+        account_id=new_account_id,
+        settlement_strategy_id=0,
+        submit=True,
+    )
+    commit_receipt_2 = snx.wait(commit_tx_2)
+    assert commit_receipt_2["status"] == 1
+
+    # wait for the order settlement
+    mine_block(snx, chain)
+    settle_tx_2 = snx.perps.settle_order(
+        account_id=new_account_id, max_tx_tries=5, submit=True
+    )
+    settle_receipt_2 = snx.wait(settle_tx_2)
+
+    # check the result
+    position = snx.perps.get_open_position(
+        market_name=market_name, account_id=new_account_id
+    )
+    assert position["position_size"] == 0
+
+    # check debt and repay
+    debt = snx.perps.get_margin_info(new_account_id)["debt"]
+    if debt > 0:
+        # check allowance
+        allowance_usd = snx.spot.get_allowance(
+            snx.perps.market_proxy.address, market_id=0
+        )
+        if allowance_usd < debt:
+            approve_usd_tx = snx.spot.approve(
+                snx.perps.market_proxy.address, market_id=0, submit=True
+            )
+            snx.wait(approve_usd_tx)
+
+        # pay debt
+        paydebt_tx = snx.perps.pay_debt(
+            account_id=new_account_id,
+            submit=True,
+        )
+        paydebt_receipt = snx.wait(paydebt_tx)
+        assert paydebt_receipt["status"] == 1
+
+    # check the margin and withdraw
+    margin_info = snx.perps.get_margin_info(new_account_id)
+    snx.logger.info(f"Margin info: {margin_info}")
+
+    # withdraw for each collateral type
+    for collateral_id, collateral_amount in margin_info["collateral_balances"].items():
+        if collateral_amount > 0:
+            withdrawal_amount = math.floor(collateral_amount * 1e8) / 1e8
+            modify_tx = snx.perps.modify_collateral(
+                -withdrawal_amount,
+                market_id=collateral_id,
+                account_id=new_account_id,
+                submit=True,
+            )
+            modify_receipt = snx.wait(modify_tx)
+
+            if modify_receipt["status"] != 1:
+                chain_receipt = chain.get_receipt(modify_tx)
+                snx.logger.info(f"{chain_receipt.show_trace()}")
+            assert modify_receipt["status"] == 1
+
+
+@chain_fork
+@pytest.mark.parametrize(
     ["market_1", "market_2"],
     [
         ("ETH", "BTC"),
     ],
 )
-@pytest.mark.skip(reason="Skip due to missing Arbitrum precompiles for the gas oracle")
 def test_multiple_positions(snx, new_account_id, market_1, market_2):
-    mine_block(snx, chain, seconds=0)
+    mine_block(snx, chain)
 
     # check allowance
     allowance = snx.spot.get_allowance(
         snx.perps.market_proxy.address, market_name="sUSD"
     )
-    if allowance < TEST_COLLATERAL_AMOUNT:
+    if allowance < TEST_USD_COLLATERAL_AMOUNT:
         approve_tx = snx.spot.approve(
             snx.perps.market_proxy.address, market_name="sUSD", submit=True
         )
@@ -295,7 +424,7 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
 
     # deposit collateral
     modify_tx = snx.perps.modify_collateral(
-        TEST_COLLATERAL_AMOUNT,
+        TEST_USD_COLLATERAL_AMOUNT,
         market_name="sUSD",
         account_id=new_account_id,
         submit=True,

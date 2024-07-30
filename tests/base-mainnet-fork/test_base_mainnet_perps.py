@@ -3,6 +3,7 @@ import time
 import math
 from conftest import chain_fork
 from ape import chain
+from utils.chain_helpers import mine_block
 
 # tests
 MARKET_NAMES = [
@@ -27,14 +28,6 @@ MARKET_NAMES = [
 ]
 TEST_COLLATERAL_AMOUNT = 1000
 TEST_POSITION_SIZE_USD = 500
-
-
-def mine_block(snx, chain, seconds=3):
-    time.sleep(seconds)
-    timestamp = int(time.time())
-
-    chain.mine(1, timestamp=timestamp)
-    snx.logger.info(f"Block mined at timestamp {timestamp}")
 
 
 def test_perps_module(snx):
@@ -69,21 +62,21 @@ def test_perps_markets(snx):
 
 
 @chain_fork
-def test_perps_account_fetch(snx, account_id):
+def test_perps_account_fetch(snx, new_account_id):
     """The instance can fetch account ids"""
     account_ids = snx.perps.get_account_ids()
     snx.logger.info(
         f"Address: {snx.address} - accounts: {len(account_ids)} - account_ids: {account_ids}"
     )
     assert len(account_ids) > 0
-    assert account_id in account_ids
+    assert new_account_id in account_ids
 
 
 @chain_fork
-def test_modify_collateral(snx, account_id):
+def test_modify_collateral(snx, new_account_id):
     """Test modify collateral"""
     # get starting collateral and sUSD balance
-    margin_info_start = snx.perps.get_margin_info(account_id)
+    margin_info_start = snx.perps.get_margin_info(new_account_id)
     susd_balance_start = snx.get_susd_balance()
 
     # check allowance
@@ -98,12 +91,12 @@ def test_modify_collateral(snx, account_id):
 
     # modify collateral
     modify_tx = snx.perps.modify_collateral(
-        TEST_COLLATERAL_AMOUNT, market_name="sUSD", account_id=account_id, submit=True
+        TEST_COLLATERAL_AMOUNT, market_name="sUSD", account_id=new_account_id, submit=True
     )
     snx.wait(modify_tx)
 
     # check the result
-    margin_info_end = snx.perps.get_margin_info(account_id)
+    margin_info_end = snx.perps.get_margin_info(new_account_id)
     susd_balance_end = snx.get_susd_balance()
 
     assert (
