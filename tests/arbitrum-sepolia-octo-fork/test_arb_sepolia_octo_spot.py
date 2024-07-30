@@ -3,19 +3,13 @@ import pytest
 from synthetix.utils import ether_to_wei, wei_to_ether, format_wei
 from conftest import chain_fork, update_prices
 from ape import chain
-import pdb
+from utils.chain_helpers import mine_block
 
 # constants
 TEST_AMOUNT = 1
 
 
 # tests
-def mine_block(snx, chain, seconds=3):
-    time.sleep(seconds)
-    timestamp = int(time.time())
-
-    chain.mine(1, timestamp=timestamp)
-    snx.logger.info(f"Block mined at timestamp {timestamp}")
 
 
 @chain_fork

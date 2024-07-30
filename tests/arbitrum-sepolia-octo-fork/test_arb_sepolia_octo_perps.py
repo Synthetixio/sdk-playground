@@ -65,7 +65,9 @@ def test_perps_account_fetch(snx, new_account_id):
         ("sETH", TEST_ETH_COLLATERAL_AMOUNT),
     ],
 )
-def test_modify_collateral(snx, contracts, new_account_id, collateral_name, collateral_amount):
+def test_modify_collateral(
+    snx, contracts, new_account_id, collateral_name, collateral_amount
+):
     """Test modify collateral"""
     # get collateral market id
     collateral_id, collateral_name = snx.spot._resolve_market(
@@ -90,7 +92,7 @@ def test_modify_collateral(snx, contracts, new_account_id, collateral_name, coll
     # if not sUSD, wrap the asset first
     if collateral_name != "sUSD":
         # get the token
-        token_name = collateral_name[1:] if collateral_name != 'sETH' else 'WETH'
+        token_name = collateral_name[1:] if collateral_name != "sETH" else "WETH"
         token = contracts[token_name]
 
         # check the allowance
@@ -102,7 +104,9 @@ def test_modify_collateral(snx, contracts, new_account_id, collateral_name, coll
             )
             snx.wait(approve_tx)
 
-        wrap_tx = snx.spot.wrap(collateral_amount, market_name=collateral_name, submit=True)
+        wrap_tx = snx.spot.wrap(
+            collateral_amount, market_name=collateral_name, submit=True
+        )
         wrap_receipt = snx.wait(wrap_tx)
         assert wrap_receipt.status == 1
 
@@ -271,10 +275,7 @@ def test_alt_account_flow(
         )
         approve_receipt = snx.wait(approve_tx)
 
-    mine_block(snx, chain)
-    wrap_tx = snx.spot.wrap(
-        collateral_amount, market_name=collateral_name, submit=True
-    )
+    wrap_tx = snx.spot.wrap(collateral_amount, market_name=collateral_name, submit=True)
     wrap_receipt = snx.wait(wrap_tx)
     assert wrap_receipt.status == 1
 
@@ -302,6 +303,7 @@ def test_alt_account_flow(
     index_price = snx.perps.markets_by_name[market_name]["index_price"]
 
     # commit order
+    mine_block(snx, chain)
     position_size = TEST_POSITION_SIZE_USD / index_price
     commit_tx = snx.perps.commit_order(
         position_size,
@@ -333,6 +335,7 @@ def test_alt_account_flow(
     size = position["position_size"]
 
     # commit order
+    mine_block(snx, chain)
     commit_tx_2 = snx.perps.commit_order(
         -size,
         market_name=market_name,
@@ -382,7 +385,6 @@ def test_alt_account_flow(
     snx.logger.info(f"Margin info: {margin_info}")
 
     # withdraw for each collateral type
-    mine_block(snx, chain)
     for collateral_id, collateral_amount in margin_info["collateral_balances"].items():
         if collateral_amount > 0:
             withdrawal_amount = math.floor(collateral_amount * 1e8) / 1e8
@@ -393,8 +395,8 @@ def test_alt_account_flow(
                 submit=True,
             )
             modify_receipt = snx.wait(modify_tx)
-            
-            if modify_receipt['status'] != 1:
+
+            if modify_receipt["status"] != 1:
                 chain_receipt = chain.get_receipt(modify_tx)
                 snx.logger.info(f"{chain_receipt.show_trace()}")
             assert modify_receipt["status"] == 1

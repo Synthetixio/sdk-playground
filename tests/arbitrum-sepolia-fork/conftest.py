@@ -215,6 +215,19 @@ def wrap_eth(snx):
 
 @chain_fork
 @pytest.fixture(scope="function")
+def perps_account_id(snx):
+    snx.logger.info("Creating a new perps account")
+    create_tx = snx.perps.create_account(submit=True)
+    snx.wait(create_tx)
+
+    account_ids = snx.perps.get_account_ids()
+    new_account_id = account_ids[-1]
+
+    yield new_account_id
+
+
+@chain_fork
+@pytest.fixture(scope="function")
 def core_account_id(snx):
     # create a core account
     tx_hash = snx.core.create_account(submit=True)
