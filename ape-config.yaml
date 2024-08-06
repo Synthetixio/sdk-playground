@@ -13,6 +13,12 @@ plugins:
 
 foundry:
   fork:
+    ethereum:
+      mainnet:
+        upstream_provider: alchemy
+      sepolia:
+        # run from local fork running on cannon 
+        upstream_provider: "http://localhost:8545"
     base:
       mainnet:
         upstream_provider: alchemy
