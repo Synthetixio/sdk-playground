@@ -15,6 +15,7 @@ def test_contracts(contracts):
     assert contracts["USDC"] is not None
     assert contracts["ARB"] is not None
     assert contracts["USDe"] is not None
+    assert contracts["BTC"] is not None
 
 
 @chain_fork
