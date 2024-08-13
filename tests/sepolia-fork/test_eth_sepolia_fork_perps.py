@@ -11,9 +11,9 @@ MARKET_NAMES = [
 ASSET_NAMES = [
     "ETH",
 ]
-TEST_USD_COLLATERAL_AMOUNT = 10000
+TEST_USD_COLLATERAL_AMOUNT = 1000
 TEST_ETH_COLLATERAL_AMOUNT = 10
-TEST_POSITION_SIZE_USD = 500
+TEST_POSITION_SIZE_USD = 50
 
 
 def test_perps_module(snx):
@@ -57,7 +57,7 @@ def test_perps_account_fetch(snx, perps_account_id):
 @pytest.mark.parametrize(
     "collateral_name, collateral_amount",
     [
-        # ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
         ("WETH", TEST_ETH_COLLATERAL_AMOUNT),
     ],
 )
@@ -68,6 +68,7 @@ def test_modify_collateral(
     # get the collateral
     collateral = contracts[collateral_name]
     collateral_address = collateral.address
+    snx.logger.info(f"Collateral: {collateral_name} - {collateral_address}")
 
     # get starting collateral and sUSD balance
     snx.logger.info(f"Account: {perps_account_id}")
@@ -131,7 +132,7 @@ def test_modify_collateral(
 @pytest.mark.parametrize(
     "collateral_name, collateral_amount",
     [
-        # ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
         ("WETH", TEST_ETH_COLLATERAL_AMOUNT),
     ],
 )

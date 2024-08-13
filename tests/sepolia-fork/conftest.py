@@ -10,7 +10,8 @@ from ape import networks, chain
 SNX_DEPLOYER_ADDRESS = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
 
 SNX_LIQUIDITY_AMOUNT = 500000
-SUSD_MINT_AMOUNT = 500
+SUSD_MINT_AMOUNT = 50000
+
 
 def chain_fork(func):
     @wraps(func)
@@ -39,9 +40,11 @@ def snx(pytestconfig):
         network_id=11155111,
         is_fork=True,
         request_kwargs={"timeout": 120},
-        # local deployment
-        ipfs_gateway="http://127.0.0.1:8080/ipfs/",
-        cannon_config={"ipfs_hash": "QmV8mQ7cE5JJ8ZTHn8PQGR7SLFNL6sFFijBYaPsDbrBMvy"},
+        cannon_config={
+            "package": "synthetix-omnibus",
+            "version": "latest",
+            "preset": "main",
+        },
     )
     mine_block(snx, chain)
     update_prices(snx)
