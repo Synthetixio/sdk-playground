@@ -7,6 +7,7 @@ from ape import networks, chain
 
 
 # find an address with a lot of usdc
+SNX_DEPLOYER = "0xbb63CA5554dc4CcaCa4EDd6ECC2837d5EFe83C82"
 USDC_WHALE = "0xD34EA7278e6BD48DefE656bbE263aEf11101469c"
 KWENTA_REFERRER = "0x3bD64247d879AF879e6f6e62F81430186391Bdb8"
 
@@ -37,6 +38,13 @@ def snx():
             "preset": "andromeda",
         },
     )
+
+    # send ETH to deployer
+    tx_params = snx._get_tx_params(value=ether_to_wei(1), to=SNX_DEPLOYER)
+    tx_hash = snx.execute_transaction(tx_params)
+    tx_receipt = snx.wait(tx_hash)
+    if tx_receipt["status"] != 1:
+        raise Exception("ETH transfer to deployer failed")
 
     # check usdc balance
     usdc_contract = snx.contracts["USDC"]["contract"]
@@ -108,6 +116,30 @@ def update_prices(snx):
         raise Exception("Price feed update failed")
     else:
         snx.logger.info("Price feeds updated")
+
+
+@chain_fork
+def liquidation_setup(snx, market_id):
+    snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER])
+
+    market = snx.perps.market_proxy
+    parameters = market.functions.getLiquidationParameters(market_id).call()
+    parameters[-1] = int(10**6 * 10**20)
+
+    tx_params = market.functions.setLiquidationParameters(
+        market_id, *parameters
+    ).build_transaction(
+        {
+            "from": SNX_DEPLOYER,
+            "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER),
+        }
+    )
+
+    # Send the transaction
+    tx_hash = snx.web3.eth.send_transaction(tx_params)
+    receipt = snx.wait(tx_hash)
+    if receipt["status"] != 1:
+        raise Exception("Set liquidation parameters failed")
 
 
 @pytest.fixture(scope="module")

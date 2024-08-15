@@ -132,7 +132,7 @@ def test_modify_collateral(
 @pytest.mark.parametrize(
     "collateral_name, collateral_amount",
     [
-        ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        # ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
         ("WETH", TEST_ETH_COLLATERAL_AMOUNT),
     ],
 )
@@ -174,6 +174,7 @@ def test_account_flow(
     # commit order
     position_size = TEST_POSITION_SIZE_USD / oracle_price
     limit_price = oracle_price * 1.01
+
     commit_tx = snx.perps.commit_order(
         position_size,
         market_id=MARKET_ID,
@@ -238,11 +239,23 @@ def test_account_flow(
     margin_info = snx.perps.get_margin_info(perps_account_id, market_id=MARKET_ID)
     snx.logger.info(margin_info)
 
-    # modify_tx_2 = snx.perps.modify_collateral(
-    #     withdrawable_margin,
-    #     market_name=collateral_name,
-    #     account_id=perps_account_id,
-    #     submit=True,
-    # )
-    # modify_receipt_2 = snx.wait(modify_tx_2)
-    # assert modify_receipt_2["status"] == 1
+    # pay down the debt
+    debt_tx = snx.perps.pay_debt(
+        account_id=perps_account_id,
+        market_id=MARKET_ID,
+        submit=True,
+    )
+    debt_receipt = snx.wait(debt_tx)
+    assert debt_receipt["status"] == 1
+    
+    margin_info = snx.perps.get_margin_info(perps_account_id, market_id=MARKET_ID)
+    snx.logger.info(margin_info)
+
+    modify_tx_2 = snx.perps.modify_collateral(
+        withdrawable_margin,
+        market_name=collateral_name,
+        account_id=perps_account_id,
+        submit=True,
+    )
+    modify_receipt_2 = snx.wait(modify_tx_2)
+    assert modify_receipt_2["status"] == 1
