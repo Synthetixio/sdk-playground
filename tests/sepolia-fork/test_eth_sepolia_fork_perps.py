@@ -1,6 +1,6 @@
 import pytest
 import math
-from conftest import chain_fork, mine_block
+from conftest import chain_fork, mine_block, liquidation_setup
 from ape import chain
 
 # tests
@@ -12,7 +12,7 @@ ASSET_NAMES = [
     "ETH",
 ]
 TEST_USD_COLLATERAL_AMOUNT = 1000
-TEST_ETH_COLLATERAL_AMOUNT = 10
+TEST_ETH_COLLATERAL_AMOUNT = 1
 TEST_POSITION_SIZE_USD = 50
 
 
@@ -259,10 +259,11 @@ def test_account_flow(
         paydebt_receipt = snx.wait(paydebt_tx)
         assert paydebt_receipt["status"] == 1
 
-
     # modify collateral
     margin_info = snx.perps.get_margin_info(perps_account_id, market_id=MARKET_ID)
-    withdraw_amount = margin_info['collateral_balances'][collateral_address]['available']
+    withdraw_amount = margin_info["collateral_balances"][collateral_address][
+        "available"
+    ]
     modify_tx_2 = snx.perps.modify_collateral(
         -withdraw_amount,
         collateral_address=collateral_address,
@@ -272,3 +273,95 @@ def test_account_flow(
     )
     modify_receipt_2 = snx.wait(modify_tx_2)
     assert modify_receipt_2["status"] == 1
+
+
+@chain_fork
+@pytest.mark.parametrize(
+    "collateral_name, collateral_amount",
+    [
+        # ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        ("WETH", TEST_ETH_COLLATERAL_AMOUNT),
+    ],
+)
+def test_liquidation(
+    snx, contracts, perps_account_id, collateral_name, collateral_amount
+):
+    # mine a block
+    mine_block(snx, chain)
+
+    # get the collateral
+    collateral = contracts[collateral_name]
+    collateral_address = collateral.address
+    pyth_feed_id = snx.perps.markets_by_id[MARKET_ID]["feed_id"]
+
+    # check allowance
+    allowance = snx.allowance(collateral_address, snx.perps.market_proxy.address)
+    if allowance < collateral_amount:
+        approve_tx = snx.approve(
+            collateral_address, snx.perps.market_proxy.address, submit=True
+        )
+        approve_receipt = snx.wait(approve_tx)
+        assert approve_receipt["status"] == 1
+
+    # modify collateral
+    modify_tx = snx.perps.modify_collateral(
+        collateral_amount,
+        collateral_address=collateral_address,
+        market_id=MARKET_ID,
+        account_id=perps_account_id,
+        submit=True,
+    )
+    modify_receipt = snx.wait(modify_tx)
+    assert modify_receipt["status"] == 1
+
+    # check the price
+    pyth_data = snx.pyth.get_price_from_ids([pyth_feed_id])
+    oracle_price = pyth_data["meta"][pyth_feed_id]["price"]
+
+    # commit order
+    position_size = TEST_ETH_COLLATERAL_AMOUNT * 5
+    limit_price = oracle_price * 1.01
+
+    commit_tx = snx.perps.commit_order(
+        position_size,
+        market_id=MARKET_ID,
+        limit_price=limit_price,
+        account_id=perps_account_id,
+        submit=True,
+    )
+    commit_receipt = snx.wait(commit_tx)
+    assert commit_receipt["status"] == 1
+
+    # check the order
+    order = snx.perps.get_order(perps_account_id, market_id=MARKET_ID)
+    snx.logger.info(f"Order: {order}")
+
+    # wait for the order settlement
+    mine_block(snx, chain, seconds=15)
+    settle_tx = snx.perps.settle_order(
+        account_id=perps_account_id, market_id=MARKET_ID, submit=True
+    )
+    settle_receipt = snx.wait(settle_tx)
+    assert settle_receipt["status"] == 1
+
+    # check the result
+    position = snx.perps.get_open_position(
+        market_id=MARKET_ID, account_id=perps_account_id
+    )
+    assert round(position["position_size"], 12) == round(position_size, 12)
+
+    # set up liquidation
+    liquidation_setup(snx, MARKET_ID)
+
+    # liquidate the account
+    mine_block(snx, chain)
+    liquidate_tx = snx.perps.liquidate(
+        account_id=perps_account_id, market_id=MARKET_ID, submit=True
+    )
+    liquidate_receipt = snx.wait(liquidate_tx)
+    assert liquidate_receipt["status"] == 1
+
+    position = snx.perps.get_open_position(
+        market_id=MARKET_ID, account_id=perps_account_id
+    )
+    assert position["position_size"] == 0

@@ -7,7 +7,7 @@ from synthetix.utils import ether_to_wei
 from ape import networks, chain
 
 # constants
-SNX_DEPLOYER_ADDRESS = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
+SNX_DEPLOYER = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
 
 SNX_LIQUIDITY_AMOUNT = 500000
 SUSD_MINT_AMOUNT = 50000
@@ -46,6 +46,7 @@ def snx(pytestconfig):
             "preset": "main",
         },
     )
+    fund_deployer(snx)
     mine_block(snx, chain)
     update_prices(snx)
     mint_weth(snx)
@@ -65,6 +66,18 @@ def contracts(snx):
         "sUSD": susd,
         "WETH": weth,
     }
+
+
+@chain_fork
+def fund_deployer(snx):
+    # send ETH to deployer
+    tx_params = snx._get_tx_params(value=ether_to_wei(1), to=SNX_DEPLOYER)
+    tx_hash = snx.execute_transaction(tx_params)
+    tx_receipt = snx.wait(tx_hash)
+    if tx_receipt["status"] != 1:
+        raise Exception("ETH transfer to deployer failed")
+    else:
+        snx.logger.info("Deployer funded")
 
 
 @chain_fork
@@ -95,15 +108,15 @@ def update_prices(snx):
 @chain_fork
 def set_timeout(snx):
     """Set the account activity timeout to zero"""
-    snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER_ADDRESS])
+    snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER])
 
     tx_params = snx.core.core_proxy.functions.setConfig(
         "0x6163636f756e7454696d656f7574576974686472617700000000000000000000",
         "0x0000000000000000000000000000000000000000000000000000000000000000",
     ).build_transaction(
         {
-            "from": SNX_DEPLOYER_ADDRESS,
-            "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER_ADDRESS),
+            "from": SNX_DEPLOYER,
+            "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER),
         }
     )
 
@@ -127,17 +140,15 @@ def mint_weth(snx):
     # mint some arb
     mint_amount = max(1000 - token_balance, 0)
     if mint_amount > 0:
-        snx.web3.provider.make_request(
-            "anvil_impersonateAccount", [SNX_DEPLOYER_ADDRESS]
-        )
+        snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER])
 
         mint_amount = ether_to_wei(mint_amount)
         tx_params = token_contract.functions.mint(
             mint_amount, snx.address
         ).build_transaction(
             {
-                "from": SNX_DEPLOYER_ADDRESS,
-                "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER_ADDRESS),
+                "from": SNX_DEPLOYER,
+                "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER),
             }
         )
 
@@ -161,16 +172,14 @@ def add_snx_liquidity(snx):
     # steal from deployer
     if balance < 1000000:
         transfer_amount = int((1000000 - balance) * 1e18)
-        snx.web3.provider.make_request(
-            "anvil_impersonateAccount", [SNX_DEPLOYER_ADDRESS]
-        )
+        snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER])
 
         tx_params = token.functions.transfer(
             snx.address, transfer_amount
         ).build_transaction(
             {
-                "from": SNX_DEPLOYER_ADDRESS,
-                "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER_ADDRESS),
+                "from": SNX_DEPLOYER,
+                "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER),
             }
         )
 
@@ -243,6 +252,35 @@ def add_snx_liquidity(snx):
     # check balance
     susd_balance = snx.get_susd_balance()["balance"]
     assert susd_balance >= SUSD_MINT_AMOUNT
+
+
+@chain_fork
+def liquidation_setup(snx, market_id):
+    mine_block(snx, chain)
+    snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER])
+
+    market = snx.perps.market_proxy
+    parameters = list(market.functions.getMarketConfigurationById(market_id).call())
+    parameters[9] = int(10**6 * 10**20)
+
+    tx_params = market.functions.setMarketConfigurationById(
+        (market_id, *parameters)
+    ).build_transaction(
+        {
+            "from": SNX_DEPLOYER,
+            "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER),
+        }
+    )
+    tx_params["gas"] = tx_params["gas"] * 2
+
+    # Send the transaction
+    tx_hash = snx.web3.eth.send_transaction(tx_params)
+    receipt = snx.wait(tx_hash)
+    snx.logger.info(f"receipt: {receipt}")
+    if receipt["status"] != 1:
+        raise Exception("Set liquidation parameters failed")
+    else:
+        snx.logger.info("Liquidation parameters set")
 
 
 @chain_fork
