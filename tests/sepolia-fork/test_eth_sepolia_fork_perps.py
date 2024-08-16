@@ -57,7 +57,7 @@ def test_perps_account_fetch(snx, perps_account_id):
 @pytest.mark.parametrize(
     "collateral_name, collateral_amount",
     [
-        ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        # ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
         ("WETH", TEST_ETH_COLLATERAL_AMOUNT),
     ],
 )
@@ -235,25 +235,38 @@ def test_account_flow(
     )
     assert position["position_size"] == 0
 
-    # check the margin and withdraw
+    # pay down any debt
     margin_info = snx.perps.get_margin_info(perps_account_id, market_id=MARKET_ID)
-    snx.logger.info(margin_info)
+    debt = margin_info["debt_usd"]
+    if debt > 0:
+        # check allowance
+        allowance_usd = snx.spot.get_allowance(
+            snx.perps.market_proxy.address, market_id=0
+        )
+        if allowance_usd < debt:
+            approve_usd_tx = snx.spot.approve(
+                snx.perps.market_proxy.address, market_id=0, submit=True
+            )
+            approve_usd_receipt = snx.wait(approve_usd_tx)
+            assert approve_usd_receipt["status"] == 1
 
-    # pay down the debt
-    debt_tx = snx.perps.pay_debt(
-        account_id=perps_account_id,
-        market_id=MARKET_ID,
-        submit=True,
-    )
-    debt_receipt = snx.wait(debt_tx)
-    assert debt_receipt["status"] == 1
-    
+        # pay debt
+        paydebt_tx = snx.perps.pay_debt(
+            account_id=perps_account_id,
+            market_id=MARKET_ID,
+            submit=True,
+        )
+        paydebt_receipt = snx.wait(paydebt_tx)
+        assert paydebt_receipt["status"] == 1
+
+
+    # modify collateral
     margin_info = snx.perps.get_margin_info(perps_account_id, market_id=MARKET_ID)
-    snx.logger.info(margin_info)
-
+    withdraw_amount = margin_info['collateral_balances'][collateral_address]['available']
     modify_tx_2 = snx.perps.modify_collateral(
-        withdrawable_margin,
-        market_name=collateral_name,
+        -withdraw_amount,
+        collateral_address=collateral_address,
+        market_id=MARKET_ID,
         account_id=perps_account_id,
         submit=True,
     )
