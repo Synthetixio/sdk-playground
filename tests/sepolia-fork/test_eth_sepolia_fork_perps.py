@@ -350,8 +350,22 @@ def test_liquidation(
     )
     assert round(position["position_size"], 12) == round(position_size, 12)
 
+    # check account is liquidatable before
+    liquidatable_before = snx.perps.get_can_liquidate(
+        account_id=perps_account_id, market_id=MARKET_ID
+    )
+    assert liquidatable_before["is_margin_liquidatable"] == False
+    assert liquidatable_before["is_position_liquidatable"] == False
+
     # set up liquidation
     liquidation_setup(snx, MARKET_ID)
+    mine_block(snx, chain)
+
+    # check account is liquidatable after
+    liquidatable_after = snx.perps.get_can_liquidate(
+        account_id=perps_account_id, market_id=MARKET_ID
+    )
+    assert liquidatable_after["is_position_liquidatable"] == True
 
     # liquidate the account
     mine_block(snx, chain)

@@ -261,7 +261,7 @@ def liquidation_setup(snx, market_id):
 
     market = snx.perps.market_proxy
     parameters = list(market.functions.getMarketConfigurationById(market_id).call())
-    parameters[9] = int(10**6 * 10**20)
+    parameters[10] = int(ether_to_wei(0.9))
 
     tx_params = market.functions.setMarketConfigurationById(
         (market_id, *parameters)
@@ -276,7 +276,6 @@ def liquidation_setup(snx, market_id):
     # Send the transaction
     tx_hash = snx.web3.eth.send_transaction(tx_params)
     receipt = snx.wait(tx_hash)
-    snx.logger.info(f"receipt: {receipt}")
     if receipt["status"] != 1:
         raise Exception("Set liquidation parameters failed")
     else:
