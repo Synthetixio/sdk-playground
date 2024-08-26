@@ -10,21 +10,6 @@ MARKET_NAMES = [
     "ETH",
     # "BTC",
     # "SOL",
-    # "SNX",
-    # "WIF",
-    # "W",
-    # "ARB",
-    # "AVAX",
-    # "BNB",
-    # "BONK",
-    # "DOGE",
-    # "ENA",
-    # "FTM",
-    # "MATIC",
-    # "OP",
-    # "ORDI",
-    # "PEPE",
-    # "RUNE",
 ]
 TEST_COLLATERAL_AMOUNT = 1000
 TEST_POSITION_SIZE_USD = 500
