@@ -1,7 +1,7 @@
 import pytest
 import time
 import math
-from conftest import chain_fork
+from conftest import chain_fork, liquidation_setup
 from ape import chain
 from utils.chain_helpers import mine_block
 
@@ -532,3 +532,146 @@ def test_multiple_positions(snx, perps_account_id, market_1, market_2):
     positions = snx.perps.get_open_positions(account_id=perps_account_id)
     assert market_1 not in positions
     assert market_2 not in positions
+
+
+@chain_fork
+def test_usd_liquidation(snx, perps_account_id):
+    market_name = "ETH"
+    market_id, market_name = snx.perps._resolve_market(None, market_name)
+    mine_block(snx, chain, seconds=0)
+
+    # check allowance
+    allowance = snx.spot.get_allowance(
+        snx.perps.market_proxy.address, market_name="sUSD"
+    )
+    if allowance < TEST_USD_COLLATERAL_AMOUNT:
+        approve_tx = snx.spot.approve(
+            snx.perps.market_proxy.address, market_name="sUSD", submit=True
+        )
+        snx.wait(approve_tx)
+
+    # deposit collateral
+    modify_tx = snx.perps.modify_collateral(
+        TEST_USD_COLLATERAL_AMOUNT,
+        market_name="sUSD",
+        account_id=perps_account_id,
+        submit=True,
+    )
+    modify_receipt = snx.wait(modify_tx)
+    assert modify_receipt["status"] == 1
+
+    # check the price
+    index_price = snx.perps.markets_by_name[market_name]["index_price"]
+
+    position_size = (TEST_USD_COLLATERAL_AMOUNT * 2) / index_price
+    commit_tx = snx.perps.commit_order(
+        position_size,
+        market_name=market_name,
+        account_id=perps_account_id,
+        settlement_strategy_id=0,
+        submit=True,
+    )
+    commit_receipt = snx.wait(commit_tx)
+    assert commit_receipt["status"] == 1
+
+    # wait for the order settlement
+    mine_block(snx, chain)
+    settle_tx = snx.perps.settle_order(
+        account_id=perps_account_id, max_tx_tries=5, submit=True
+    )
+    settle_receipt = snx.wait(settle_tx)
+    assert settle_receipt["status"] == 1
+
+    # check the result
+    position = snx.perps.get_open_position(
+        market_name=market_name, account_id=perps_account_id
+    )
+    assert round(position["position_size"], 12) == round(position_size, 12)
+
+    # set the liquidation parameters
+    liquidation_setup(snx, market_id)
+
+    # liquidate the account
+    liquidate_tx = snx.perps.liquidate(perps_account_id, submit=True)
+    liquidate_receipt = snx.wait(liquidate_tx)
+    assert liquidate_receipt["status"] == 1
+
+
+@chain_fork
+def test_eth_liquidation(snx, contracts, perps_account_id):
+    # get the token
+    market_name = "ETH"
+    token_name = "WETH"
+    token = contracts[token_name]
+
+    market_id, market_name = snx.perps._resolve_market(None, market_name)
+    mine_block(snx, chain, seconds=0)
+
+    # check spot market allowance
+    allowance = snx.allowance(token.address, snx.spot.market_proxy.address)
+    if allowance < TEST_ETH_COLLATERAL_AMOUNT:
+        # approve
+        approve_tx = snx.approve(
+            token.address, snx.spot.market_proxy.address, submit=True
+        )
+        approve_receipt = snx.wait(approve_tx)
+
+    wrap_tx = snx.spot.wrap(TEST_ETH_COLLATERAL_AMOUNT, market_name="sETH", submit=True)
+    wrap_receipt = snx.wait(wrap_tx)
+    assert wrap_receipt.status == 1
+
+    # check perps market allowance
+    allowance = snx.spot.get_allowance(
+        snx.perps.market_proxy.address, market_name="sETH"
+    )
+    if allowance < TEST_ETH_COLLATERAL_AMOUNT:
+        approve_tx = snx.spot.approve(
+            snx.perps.market_proxy.address, market_name="sETH", submit=True
+        )
+        snx.wait(approve_tx)
+
+    # deposit collateral
+    modify_tx = snx.perps.modify_collateral(
+        TEST_ETH_COLLATERAL_AMOUNT,
+        market_name="sETH",
+        account_id=perps_account_id,
+        submit=True,
+    )
+    modify_receipt = snx.wait(modify_tx)
+    assert modify_receipt["status"] == 1
+
+    # check the price
+    index_price = snx.perps.markets_by_name[market_name]["index_price"]
+
+    position_size = (TEST_ETH_COLLATERAL_AMOUNT * 2) / index_price
+    commit_tx = snx.perps.commit_order(
+        position_size,
+        market_name=market_name,
+        account_id=perps_account_id,
+        settlement_strategy_id=0,
+        submit=True,
+    )
+    commit_receipt = snx.wait(commit_tx)
+    assert commit_receipt["status"] == 1
+
+    # wait for the order settlement
+    mine_block(snx, chain)
+    settle_tx = snx.perps.settle_order(
+        account_id=perps_account_id, max_tx_tries=5, submit=True
+    )
+    settle_receipt = snx.wait(settle_tx)
+    assert settle_receipt["status"] == 1
+
+    # check the result
+    position = snx.perps.get_open_position(
+        market_name=market_name, account_id=perps_account_id
+    )
+    assert round(position["position_size"], 12) == round(position_size, 12)
+
+    # set the liquidation parameters
+    liquidation_setup(snx, market_id)
+
+    # liquidate the account
+    liquidate_tx = snx.perps.liquidate(perps_account_id, submit=True)
+    liquidate_receipt = snx.wait(liquidate_tx)
+    assert liquidate_receipt["status"] == 1

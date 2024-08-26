@@ -36,7 +36,7 @@ def snx(pytestconfig):
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
-            "version": "15",
+            "version": "latest",
             "preset": "main",
         },
     )
@@ -205,7 +205,7 @@ def wrap_eth(snx):
 def mint_usdx_with_usdc(snx):
     """The instance can mint USDx tokens using USDC as collateral"""
     # set up token contracts
-    token = snx.contracts["USDC"]['contract']
+    token = snx.contracts["USDC"]["contract"]
     usdc_decimals = token.functions.decimals().call()
 
     susd = snx.contracts["system"]["USDProxy"]["contract"]
@@ -271,6 +271,30 @@ def mint_usdx_with_usdc(snx):
     # check balance
     usdx_balance = snx.get_susd_balance()["balance"]
     assert usdx_balance >= USDX_MINT_AMOUNT
+
+
+@chain_fork
+def liquidation_setup(snx, market_id):
+    snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER])
+
+    market = snx.perps.market_proxy
+    parameters = market.functions.getLiquidationParameters(market_id).call()
+    parameters[-1] = int(10**6 * 10**20)
+
+    tx_params = market.functions.setLiquidationParameters(
+        market_id, *parameters
+    ).build_transaction(
+        {
+            "from": SNX_DEPLOYER,
+            "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER),
+        }
+    )
+
+    # Send the transaction
+    tx_hash = snx.web3.eth.send_transaction(tx_params)
+    receipt = snx.wait(tx_hash)
+    if receipt["status"] != 1:
+        raise Exception("Set liquidation parameters failed")
 
 
 @chain_fork
