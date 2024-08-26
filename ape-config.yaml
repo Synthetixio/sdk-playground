@@ -13,6 +13,11 @@ plugins:
 
 foundry:
   fork:
+    ethereum:
+      mainnet:
+        upstream_provider: alchemy
+      sepolia:
+        upstream_provider: alchemy
     base:
       mainnet:
         upstream_provider: alchemy
