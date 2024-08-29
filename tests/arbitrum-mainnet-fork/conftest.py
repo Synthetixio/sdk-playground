@@ -12,6 +12,7 @@ SNX_DEPLOYER = "0xD3DFa13CDc7c133b1700c243f03A8C6Df513A93b"
 USDC_WHALE = "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
 ARB_WHALE = "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
 USDE_WHALE = "0xb3C24D9dcCC2Ec5f778742389ffe448E295B84e0"
+TBTC_WHALE = "0xa79a356B01ef805B3089b4FE67447b96c7e6DD4C"
 
 USDC_MINT_AMOUNT = 1000000
 USDC_LP_AMOUNT = 500000
@@ -37,12 +38,10 @@ def snx(pytestconfig):
         network_id=42161,
         is_fork=True,
         request_kwargs={"timeout": 120},
-        ipfs_gateway="http://localhost:8080/ipfs/",
         cannon_config={
-            "ipfs_hash": "QmQkuzn1c8C1EMDpepC1XX3Mszp2Xo6CqG4r8x5vjgHVa4",
-            # "package": "synthetix-omnibus",
-            # "version": "5",
-            # "preset": "main",
+            "package": "synthetix-omnibus",
+            "version": "18",
+            "preset": "main",
         },
     )
     mock_arb_precompiles(snx)
@@ -50,6 +49,7 @@ def snx(pytestconfig):
     steal_arb(snx)
     steal_usdc(snx)
     steal_usde(snx)
+    steal_tbtc(snx)
     mint_usdx_with_usdc(snx)
     wrap_eth(snx)
     update_prices(snx)
@@ -64,11 +64,13 @@ def contracts(snx):
     usdc = snx.contracts["USDC"]["contract"]
     arb = snx.contracts["ARB"]["contract"]
     usde = snx.contracts["USDe"]["contract"]
+    tbtc = snx.contracts["tBTC"]["contract"]
     return {
         "WETH": weth,
         "USDC": usdc,
         "ARB": arb,
         "USDe": usde,
+        "tBTC": tbtc,
     }
 
 
@@ -230,6 +232,49 @@ def steal_usde(snx):
         assert receipt is not None
         assert receipt.status == 1
         snx.logger.info(f"Stole USDe from {USDE_WHALE}")
+
+
+@chain_fork
+def steal_tbtc(snx):
+    """The instance can steal tBTC tokens"""
+    # check USDe balance
+    tbtc_contract = snx.contracts["tBTC"]["contract"]
+    tbtc_balance = tbtc_contract.functions.balanceOf(snx.address).call()
+    tbtc_balance = tbtc_balance / 10**18
+
+    # get some tbtc
+    if tbtc_balance < 2:
+        # send some eth to the whale
+        send_tx_params = snx._get_tx_params(to=TBTC_WHALE, value=ether_to_wei(1))
+        send_tx_hash = snx.execute_transaction(send_tx_params)
+        send_tx_receipt = snx.wait(send_tx_hash)
+
+        assert send_tx_hash is not None
+        assert send_tx_receipt is not None
+        assert send_tx_receipt.status == 1
+
+        transfer_amount = int((2 - tbtc_balance) * 10**18)
+        snx.web3.provider.make_request("anvil_impersonateAccount", [TBTC_WHALE])
+
+        tx_params = tbtc_contract.functions.transfer(
+            snx.address, transfer_amount
+        ).build_transaction(
+            {
+                "from": TBTC_WHALE,
+                "nonce": snx.web3.eth.get_transaction_count(TBTC_WHALE),
+            }
+        )
+
+        # Send the transaction directly without signing
+        tx_hash = snx.web3.eth.send_transaction(tx_params)
+        receipt = snx.wait(tx_hash)
+        if receipt["status"] != 1:
+            raise Exception("tBTC Transfer failed")
+
+        assert tx_hash is not None
+        assert receipt is not None
+        assert receipt.status == 1
+        snx.logger.info(f"Stole tBTC from {TBTC_WHALE}")
 
 
 @chain_fork
