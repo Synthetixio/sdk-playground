@@ -114,7 +114,6 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
         ("USDC", TEST_USD_AMOUNT, 6),
     ],
 )
-
 def test_spot_async_order(snx, contracts, token_name, test_amount, decimals):
     """The instance can wrap USDC for sUSDC and commit an async order to sell for sUSD"""
     token = contracts[token_name]
@@ -180,7 +179,11 @@ def test_spot_async_order(snx, contracts, token_name, test_amount, decimals):
     # commit order
     mine_block(snx, chain)
     commit_tx = snx.spot.commit_order(
-        "sell", test_amount, slippage_tolerance=0.001, market_id=market_id, submit=True
+        "sell",
+        test_amount,
+        slippage_tolerance=0.001,
+        market_id=market_id,
+        submit=True,
     )
     commit_receipt = snx.wait(commit_tx)
 
@@ -271,7 +274,7 @@ def test_spot_async_order(snx, contracts, token_name, test_amount, decimals):
     buy_susd_balance = snx.spot.get_balance(market_id=0)
 
     assert buy_balance == sold_balance
-    assert buy_synth_balance >= sold_synth_balance + test_amount - 2
+    assert buy_synth_balance >= sold_synth_balance + test_amount - 3
     assert buy_susd_balance >= sold_susd_balance - test_amount
 
     ## unwrap

@@ -1,7 +1,7 @@
 import pytest
 import time
 import math
-from conftest import chain_fork, liquidation_setup
+from conftest import chain_fork, liquidation_setup, update_prices
 from ape import chain
 from utils.chain_helpers import mine_block
 
@@ -399,6 +399,12 @@ def test_alt_account_flow(
     margin_info = snx.perps.get_margin_info(perps_account_id)
     snx.logger.info(f"Margin info: {margin_info}")
 
+    # make really fresh prices
+    # this is required because otherwise this test can fail if the transaction simulation passes, but the transaction fails
+    # due to mismatched "block" timestamps and "real" timestamps
+    mine_block(snx, chain)
+    update_prices(snx)
+
     # withdraw for each collateral type
     for collateral_id, collateral_amount in margin_info["collateral_balances"].items():
         if collateral_amount > 0:
@@ -709,6 +715,12 @@ def test_alts_liquidation(snx, contracts, perps_account_id):
 
     # set the liquidation parameters
     liquidation_setup(snx, perps_market_id)
+
+    # make really fresh prices
+    # this is required because otherwise this test can fail if the transaction simulation passes, but the transaction fails
+    # due to mismatched "block" timestamps and "real" timestamps
+    mine_block(snx, chain)
+    update_prices(snx)
 
     # liquidate the account
     liquidate_tx = snx.perps.liquidate(perps_account_id, submit=True)

@@ -52,8 +52,8 @@ def snx(pytestconfig):
     steal_tbtc(snx)
     mint_usdx_with_usdc(snx)
     wrap_eth(snx)
-    update_prices(snx)
     mine_block(snx, chain)
+    update_prices(snx)
     return snx
 
 
