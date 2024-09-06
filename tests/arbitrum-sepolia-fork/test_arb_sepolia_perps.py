@@ -1,7 +1,7 @@
 import pytest
 import time
 import math
-from conftest import chain_fork, liquidation_setup
+from conftest import chain_fork, liquidation_setup, update_prices
 from ape import chain
 from utils.chain_helpers import mine_block
 
@@ -13,6 +13,7 @@ MARKET_NAMES = [
 TEST_USD_COLLATERAL_AMOUNT = 1000
 TEST_ETH_COLLATERAL_AMOUNT = 0.5
 TEST_BTC_COLLATERAL_AMOUNT = 0.01
+TEST_SOL_COLLATERAL_AMOUNT = 10
 TEST_POSITION_SIZE_USD = 50
 
 
@@ -65,6 +66,8 @@ def test_perps_account_fetch(snx, perps_account_id):
         ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
         ("sBTC", TEST_BTC_COLLATERAL_AMOUNT),
         ("sETH", TEST_ETH_COLLATERAL_AMOUNT),
+        ("sUSDe", TEST_USD_COLLATERAL_AMOUNT),
+        ("sSOL", TEST_SOL_COLLATERAL_AMOUNT),
     ],
 )
 def test_modify_collateral(
@@ -262,6 +265,8 @@ def test_usd_account_flow(
     [
         ("ETH", "sBTC", TEST_BTC_COLLATERAL_AMOUNT),
         ("ETH", "sETH", TEST_ETH_COLLATERAL_AMOUNT),
+        ("ETH", "sUSDe", TEST_USD_COLLATERAL_AMOUNT),
+        ("ETH", "sSOL", TEST_SOL_COLLATERAL_AMOUNT),
     ],
 )
 def test_alt_account_flow(
@@ -598,55 +603,104 @@ def test_usd_liquidation(snx, perps_account_id):
 
 
 @chain_fork
-def test_eth_liquidation(snx, contracts, perps_account_id):
-    # get the token
-    market_name = "ETH"
-    token_name = "WETH"
-    token = contracts[token_name]
-
-    market_id, market_name = snx.perps._resolve_market(None, market_name)
-    mine_block(snx, chain, seconds=0)
-
-    # check spot market allowance
-    allowance = snx.allowance(token.address, snx.spot.market_proxy.address)
-    if allowance < TEST_ETH_COLLATERAL_AMOUNT:
-        # approve
-        approve_tx = snx.approve(
-            token.address, snx.spot.market_proxy.address, submit=True
-        )
-        approve_receipt = snx.wait(approve_tx)
-
-    wrap_tx = snx.spot.wrap(TEST_ETH_COLLATERAL_AMOUNT, market_name="sETH", submit=True)
-    wrap_receipt = snx.wait(wrap_tx)
-    assert wrap_receipt.status == 1
-
-    # check perps market allowance
-    allowance = snx.spot.get_allowance(
-        snx.perps.market_proxy.address, market_name="sETH"
+@pytest.mark.parametrize(
+    "collateral_config",
+    [
+        [
+            {
+                "market_name": "ETH",
+                "token_name": "WETH",
+                "collateral_amount": TEST_ETH_COLLATERAL_AMOUNT,
+            },
+            {
+                "market_name": "BTC",
+                "token_name": "BTC",
+                "collateral_amount": TEST_BTC_COLLATERAL_AMOUNT,
+            },
+        ],
+        [
+            {
+                "market_name": "BTC",
+                "token_name": "BTC",
+                "collateral_amount": TEST_BTC_COLLATERAL_AMOUNT,
+            },
+            {
+                "market_name": "USDe",
+                "token_name": "USDe",
+                "collateral_amount": TEST_USD_COLLATERAL_AMOUNT,
+            },
+            {
+                "market_name": "SOL",
+                "token_name": "SOL",
+                "collateral_amount": TEST_SOL_COLLATERAL_AMOUNT,
+            },
+        ],
+    ],
+)
+def test_alts_liquidation(snx, contracts, perps_account_id, collateral_config):
+    perps_market_name = "ETH"
+    perps_market_id, perps_market_name = snx.perps._resolve_market(
+        None, perps_market_name
     )
-    if allowance < TEST_ETH_COLLATERAL_AMOUNT:
-        approve_tx = snx.spot.approve(
-            snx.perps.market_proxy.address, market_name="sETH", submit=True
-        )
-        snx.wait(approve_tx)
 
-    # deposit collateral
-    modify_tx = snx.perps.modify_collateral(
-        TEST_ETH_COLLATERAL_AMOUNT,
-        market_name="sETH",
-        account_id=perps_account_id,
-        submit=True,
-    )
-    modify_receipt = snx.wait(modify_tx)
-    assert modify_receipt["status"] == 1
+    # deposit collaterals
+    for collateral in collateral_config:
+        token_name = collateral["token_name"]
+        market_name = collateral["market_name"]
+        wrapped_token_name = f"s{market_name}"
+        collateral_amount = collateral["collateral_amount"]
+
+        token = contracts[token_name]
+
+        # check spot market allowance
+        allowance = snx.allowance(token.address, snx.spot.market_proxy.address)
+        if allowance < collateral_amount:
+            # approve
+            approve_tx = snx.approve(
+                token.address, snx.spot.market_proxy.address, submit=True
+            )
+            approve_receipt = snx.wait(approve_tx)
+            assert approve_receipt.status == 1
+
+        wrap_tx = snx.spot.wrap(
+            collateral_amount, market_name=wrapped_token_name, submit=True
+        )
+        wrap_receipt = snx.wait(wrap_tx)
+        if wrap_receipt.status != 1:
+            chain_receipt = chain.get_receipt(wrap_tx)
+            snx.logger.info(f"{chain_receipt.show_trace()}")
+        assert wrap_receipt.status == 1
+
+        # check perps market allowance
+        allowance = snx.spot.get_allowance(
+            snx.perps.market_proxy.address, market_name=wrapped_token_name
+        )
+        if allowance < collateral_amount:
+            approve_tx = snx.spot.approve(
+                snx.perps.market_proxy.address,
+                market_name=wrapped_token_name,
+                submit=True,
+            )
+            snx.wait(approve_tx)
+
+        # deposit collateral
+        modify_tx = snx.perps.modify_collateral(
+            collateral_amount,
+            market_name=wrapped_token_name,
+            account_id=perps_account_id,
+            submit=True,
+        )
+        modify_receipt = snx.wait(modify_tx)
+        assert modify_receipt["status"] == 1
 
     # check the price
-    index_price = snx.perps.markets_by_name[market_name]["index_price"]
+    index_price = snx.perps.markets_by_name[perps_market_name]["index_price"]
 
-    position_size = (TEST_ETH_COLLATERAL_AMOUNT * 2) / index_price
+    mine_block(snx, chain)
+    position_size = (TEST_ETH_COLLATERAL_AMOUNT * 5) / index_price
     commit_tx = snx.perps.commit_order(
         position_size,
-        market_name=market_name,
+        market_name=perps_market_name,
         account_id=perps_account_id,
         settlement_strategy_id=0,
         submit=True,
@@ -664,14 +718,31 @@ def test_eth_liquidation(snx, contracts, perps_account_id):
 
     # check the result
     position = snx.perps.get_open_position(
-        market_name=market_name, account_id=perps_account_id
+        market_name=perps_market_name, account_id=perps_account_id
     )
     assert round(position["position_size"], 12) == round(position_size, 12)
 
     # set the liquidation parameters
-    liquidation_setup(snx, market_id)
+    liquidation_setup(snx, perps_market_id)
+
+    # make really fresh prices
+    # this is required because otherwise this test can fail if the transaction simulation passes, but the transaction fails
+    # due to mismatched "block" timestamps and "real" timestamps
+    mine_block(snx, chain)
+    update_prices(snx)
 
     # liquidate the account
     liquidate_tx = snx.perps.liquidate(perps_account_id, submit=True)
     liquidate_receipt = snx.wait(liquidate_tx)
+    if liquidate_receipt["status"] != 1:
+        chain_receipt = chain.get_receipt(liquidate_tx)
+        snx.logger.info(f"{chain_receipt.show_trace()}")
     assert liquidate_receipt["status"] == 1
+
+    # log the RewardDistributed events
+    reward_events = snx.core.core_proxy.events.RewardsDistributed().process_receipt(
+        liquidate_receipt
+    )
+    assert len(reward_events) >= 1
+    for event in reward_events:
+        snx.logger.info(event)

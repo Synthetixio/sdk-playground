@@ -45,6 +45,7 @@ def snx(pytestconfig):
     mint_token(snx, "arb")
     mint_token(snx, "USDe")
     mint_token(snx, "btc")
+    mint_token(snx, "SOL")
     steal_usdc(snx)
     mint_usdx_with_usdc(snx)
     wrap_eth(snx)
@@ -60,12 +61,14 @@ def contracts(snx):
     arb = snx.contracts["arb_mock_collateral"]["MintableToken"]["contract"]
     usde = snx.contracts["USDe_mock_collateral"]["MintableToken"]["contract"]
     btc = snx.contracts["btc_mock_collateral"]["MintableToken"]["contract"]
+    sol = snx.contracts["SOL_mock_collateral"]["MintableToken"]["contract"]
     return {
         "WETH": weth,
         "USDC": usdc,
         "ARB": arb,
         "USDe": usde,
         "BTC": btc,
+        "SOL": sol,
     }
 
 
