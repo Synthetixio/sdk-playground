@@ -13,6 +13,7 @@ MARKET_NAMES = [
 TEST_USD_COLLATERAL_AMOUNT = 1000
 TEST_ETH_COLLATERAL_AMOUNT = 0.5
 TEST_BTC_COLLATERAL_AMOUNT = 0.01
+TEST_SOL_COLLATERAL_AMOUNT = 10
 TEST_POSITION_SIZE_USD = 50
 
 
@@ -66,6 +67,7 @@ def test_perps_account_fetch(snx, perps_account_id):
         ("sBTC", TEST_BTC_COLLATERAL_AMOUNT),
         ("sETH", TEST_ETH_COLLATERAL_AMOUNT),
         ("sUSDe", TEST_USD_COLLATERAL_AMOUNT),
+        ("sSOL", TEST_SOL_COLLATERAL_AMOUNT),
     ],
 )
 def test_modify_collateral(
@@ -264,6 +266,7 @@ def test_usd_account_flow(
         ("ETH", "sBTC", TEST_BTC_COLLATERAL_AMOUNT),
         ("ETH", "sETH", TEST_ETH_COLLATERAL_AMOUNT),
         ("ETH", "sUSDe", TEST_USD_COLLATERAL_AMOUNT),
+        ("ETH", "sSOL", TEST_SOL_COLLATERAL_AMOUNT),
     ],
 )
 def test_alt_account_flow(
@@ -600,31 +603,48 @@ def test_usd_liquidation(snx, perps_account_id):
 
 
 @chain_fork
-def test_alts_liquidation(snx, contracts, perps_account_id):
+@pytest.mark.parametrize(
+    "collateral_config",
+    [
+        [
+            {
+                "market_name": "ETH",
+                "token_name": "WETH",
+                "collateral_amount": TEST_ETH_COLLATERAL_AMOUNT,
+            },
+            {
+                "market_name": "BTC",
+                "token_name": "BTC",
+                "collateral_amount": TEST_BTC_COLLATERAL_AMOUNT,
+            },
+        ],
+        [
+            {
+                "market_name": "BTC",
+                "token_name": "BTC",
+                "collateral_amount": TEST_BTC_COLLATERAL_AMOUNT,
+            },
+            {
+                "market_name": "USDe",
+                "token_name": "USDe",
+                "collateral_amount": TEST_USD_COLLATERAL_AMOUNT,
+            },
+            {
+                "market_name": "SOL",
+                "token_name": "SOL",
+                "collateral_amount": TEST_SOL_COLLATERAL_AMOUNT,
+            },
+        ],
+    ],
+)
+def test_alts_liquidation(snx, contracts, perps_account_id, collateral_config):
     perps_market_name = "ETH"
     perps_market_id, perps_market_name = snx.perps._resolve_market(
         None, perps_market_name
     )
 
-    # deposit both ETH and BTC
-    collaterals = [
-        {
-            "market_name": "ETH",
-            "token_name": "WETH",
-            "collateral_amount": TEST_ETH_COLLATERAL_AMOUNT,
-        },
-        {
-            "market_name": "BTC",
-            "token_name": "BTC",
-            "collateral_amount": TEST_BTC_COLLATERAL_AMOUNT,
-        },
-        {
-            "market_name": "USDe",
-            "token_name": "USDe",
-            "collateral_amount": TEST_USD_COLLATERAL_AMOUNT,
-        },
-    ]
-    for collateral in collaterals:
+    # deposit collaterals
+    for collateral in collateral_config:
         token_name = collateral["token_name"]
         market_name = collateral["market_name"]
         wrapped_token_name = f"s{market_name}"

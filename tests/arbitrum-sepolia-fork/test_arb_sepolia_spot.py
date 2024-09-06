@@ -9,6 +9,7 @@ from utils.chain_helpers import mine_block
 TEST_USD_AMOUNT = 100
 TEST_ETH_AMOUNT = 1
 TEST_BTC_AMOUNT = 0.25
+TEST_SOL_AMOUNT = 10
 
 
 @chain_fork
@@ -36,6 +37,7 @@ def test_spot_markets(snx):
         ("WETH", TEST_ETH_AMOUNT, 18),
         ("BTC", TEST_BTC_AMOUNT, 18),
         ("USDe", TEST_USD_AMOUNT, 18),
+        ("SOL", TEST_SOL_AMOUNT, 18),
     ],
 )
 def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
@@ -306,6 +308,7 @@ def test_spot_async_order(snx, contracts, token_name, test_amount, decimals):
         ("USDe", TEST_USD_AMOUNT, 18, 0.05),
         ("WETH", TEST_ETH_AMOUNT, 18, 0.05),
         ("BTC", TEST_BTC_AMOUNT, 18, 0.05),
+        ("SOL", TEST_SOL_AMOUNT, 18, 0.05),
     ],
 )
 def test_spot_atomic_order(
