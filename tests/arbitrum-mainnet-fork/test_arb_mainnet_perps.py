@@ -15,6 +15,7 @@ MARKET_NAMES = [
 TEST_USD_COLLATERAL_AMOUNT = 1000
 TEST_ETH_COLLATERAL_AMOUNT = 0.5
 TEST_BTC_COLLATERAL_AMOUNT = 0.01
+TEST_SOL_COLLATERAL_AMOUNT = 5
 TEST_POSITION_SIZE_USD = 50
 
 
@@ -66,8 +67,10 @@ def test_perps_account_fetch(snx, perps_account_id):
     "collateral_name, collateral_amount",
     [
         ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
-        # ("sBTC", TEST_BTC_COLLATERAL_AMOUNT),
+        ("stBTC", TEST_BTC_COLLATERAL_AMOUNT),
         ("sETH", TEST_ETH_COLLATERAL_AMOUNT),
+        ("sUSDe", TEST_USD_COLLATERAL_AMOUNT),
+        ("swSOL", TEST_SOL_COLLATERAL_AMOUNT),
     ],
 )
 def test_modify_collateral(
@@ -112,6 +115,11 @@ def test_modify_collateral(
             collateral_amount, market_name=collateral_name, submit=True
         )
         wrap_receipt = snx.wait(wrap_tx)
+        if wrap_receipt["status"] != 1:
+            chain_receipt = chain.get_receipt(wrap_tx)
+            trace = chain_receipt.show_trace()
+            snx.logger.info(f"{trace}")
+
         assert wrap_receipt.status == 1
 
     # modify collateral
@@ -156,8 +164,8 @@ def test_modify_collateral(
     [
         ("ETH", "sUSD", TEST_USD_COLLATERAL_AMOUNT),
         ("BTC", "sUSD", TEST_USD_COLLATERAL_AMOUNT),
-        # ("SOL", "sUSD", TEST_USD_COLLATERAL_AMOUNT),
-        # ("WIF", "sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        ("SOL", "sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        ("WIF", "sUSD", TEST_USD_COLLATERAL_AMOUNT),
     ],
 )
 def test_usd_account_flow(
@@ -271,6 +279,8 @@ def test_usd_account_flow(
     [
         ("ETH", "stBTC", TEST_BTC_COLLATERAL_AMOUNT),
         ("ETH", "sETH", TEST_ETH_COLLATERAL_AMOUNT),
+        ("ETH", "sUSDe", TEST_USD_COLLATERAL_AMOUNT),
+        ("ETH", "swSOL", TEST_SOL_COLLATERAL_AMOUNT),
     ],
 )
 def test_alt_account_flow(
@@ -616,26 +626,48 @@ def test_usd_liquidation(snx, perps_account_id):
 
 
 @chain_fork
-def test_alts_liquidation(snx, contracts, perps_account_id):
+@pytest.mark.parametrize(
+    "collateral_config",
+    [
+        [
+            {
+                "market_name": "ETH",
+                "token_name": "WETH",
+                "collateral_amount": TEST_ETH_COLLATERAL_AMOUNT,
+            },
+            {
+                "market_name": "tBTC",
+                "token_name": "tBTC",
+                "collateral_amount": TEST_BTC_COLLATERAL_AMOUNT,
+            },
+        ],
+        [
+            {
+                "market_name": "tBTC",
+                "token_name": "tBTC",
+                "collateral_amount": TEST_BTC_COLLATERAL_AMOUNT,
+            },
+            {
+                "market_name": "USDe",
+                "token_name": "USDe",
+                "collateral_amount": TEST_USD_COLLATERAL_AMOUNT,
+            },
+            {
+                "market_name": "wSOL",
+                "token_name": "wSOL",
+                "collateral_amount": TEST_SOL_COLLATERAL_AMOUNT,
+            },
+        ],
+    ],
+)
+def test_alts_liquidation(snx, contracts, perps_account_id, collateral_config):
     perps_market_name = "ETH"
     perps_market_id, perps_market_name = snx.perps._resolve_market(
         None, perps_market_name
     )
 
-    # deposit both ETH and BTC
-    collaterals = [
-        {
-            "market_name": "ETH",
-            "token_name": "WETH",
-            "collateral_amount": TEST_ETH_COLLATERAL_AMOUNT,
-        },
-        {
-            "market_name": "tBTC",
-            "token_name": "tBTC",
-            "collateral_amount": TEST_BTC_COLLATERAL_AMOUNT,
-        },
-    ]
-    for collateral in collaterals:
+    # deposit collaterals
+    for collateral in collateral_config:
         token_name = collateral["token_name"]
         market_name = collateral["market_name"]
         wrapped_token_name = f"s{market_name}"
@@ -725,6 +757,9 @@ def test_alts_liquidation(snx, contracts, perps_account_id):
     # liquidate the account
     liquidate_tx = snx.perps.liquidate(perps_account_id, submit=True)
     liquidate_receipt = snx.wait(liquidate_tx)
+    if liquidate_receipt["status"] != 1:
+        chain_receipt = chain.get_receipt(liquidate_tx)
+        snx.logger.info(f"{chain_receipt.trace}")
     assert liquidate_receipt["status"] == 1
 
     # log the RewardDistributed events

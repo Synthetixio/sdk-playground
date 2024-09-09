@@ -1,4 +1,5 @@
 from conftest import chain_fork
+
 # tests
 
 
@@ -15,6 +16,7 @@ def test_contracts(contracts):
     assert contracts["USDC"] is not None
     assert contracts["ARB"] is not None
     assert contracts["USDe"] is not None
+    # assert contracts["WSOL"] is not None
 
 
 @chain_fork
