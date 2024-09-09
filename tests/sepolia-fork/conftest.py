@@ -9,7 +9,7 @@ from ape import networks, chain
 # constants
 SNX_DEPLOYER = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
 
-SNX_LIQUIDITY_AMOUNT = 500000
+SNX_LIQUIDITY_AMOUNT = 4000000
 SUSD_MINT_AMOUNT = 50000
 
 
@@ -32,7 +32,7 @@ def mine_block(snx, chain, seconds=3):
 
 # fixtures
 @chain_fork
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def snx(pytestconfig):
     # set up the snx instance
     snx = Synthetix(
@@ -42,7 +42,7 @@ def snx(pytestconfig):
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
-            "version": "latest",
+            "version": "8",
             "preset": "main",
         },
     )
@@ -170,8 +170,8 @@ def add_snx_liquidity(snx):
     balance = token.functions.balanceOf(snx.address).call() / 1e18
 
     # steal from deployer
-    if balance < 1000000:
-        transfer_amount = int((1000000 - balance) * 1e18)
+    if balance < SNX_LIQUIDITY_AMOUNT * 2:
+        transfer_amount = int((SNX_LIQUIDITY_AMOUNT * 2 - balance) * 1e18)
         snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER])
 
         tx_params = token.functions.transfer(
