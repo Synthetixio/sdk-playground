@@ -7,10 +7,36 @@ from utils.chain_helpers import mine_block
 
 # tests
 MARKET_NAMES = [
-    "ETH",
     "BTC",
+    "ETH",
     "SOL",
     "WIF",
+    # "AAVE",
+    # "ADA",
+    # "ARB",
+    # "AVAX",
+    # "BCH",
+    # "BNB",
+    # "CRV",
+    # "DOGE",
+    # "DYDX",
+    # "GMX",
+    # "LINK",
+    # "LTC",
+    # "MKR",
+    # "NEAR",
+    # "OP",
+    # "ORDI",
+    # "PEPE",
+    # "POL",
+    # "PYTH",
+    # "RUNE",
+    # "SHIB",
+    # "STX",
+    # "TIA",
+    # "UNI",
+    # "XLM",
+    # "XRP",
 ]
 TEST_USD_COLLATERAL_AMOUNT = 1000
 TEST_ETH_COLLATERAL_AMOUNT = 0.5
