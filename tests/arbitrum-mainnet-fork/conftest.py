@@ -39,12 +39,10 @@ def snx(pytestconfig):
         network_id=42161,
         is_fork=True,
         request_kwargs={"timeout": 120},
-        ipfs_gateway="http://localhost:8080/ipfs/",
         cannon_config={
-            "ipfs_hash": "QmRK8JmmrvknXPbitgzSkgjUNK914zvF6bN62UTHdsQNrm",
-            # "package": "synthetix-omnibus",
-            # "version": "18",
-            # "preset": "main",
+            "package": "synthetix-omnibus",
+            "version": "latest",
+            "preset": "main",
         },
     )
     mock_arb_precompiles(snx)
