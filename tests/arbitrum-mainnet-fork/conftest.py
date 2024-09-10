@@ -39,10 +39,12 @@ def snx(pytestconfig):
         network_id=42161,
         is_fork=True,
         request_kwargs={"timeout": 120},
+        ipfs_gateway="http://localhost:8080/ipfs/",
         cannon_config={
-            "package": "synthetix-omnibus",
-            "version": "latest",
-            "preset": "main",
+            "ipfs_hash": "QmXDKbQP7cZCuTkqNm8ycSQsp1v6pC5jXZAJ2tZDaEtddj",
+            # "package": "synthetix-omnibus",
+            # "version": "latest",
+            # "preset": "main",
         },
     )
     mock_arb_precompiles(snx)
@@ -68,7 +70,7 @@ def contracts(snx):
     arb = snx.contracts["ARB"]["contract"]
     usde = snx.contracts["USDe"]["contract"]
     tbtc = snx.contracts["tBTC"]["contract"]
-    wsol = snx.contracts["WSOL"]["contract"]
+    wsol = snx.contracts["wSOL"]["contract"]
     return {
         "WETH": weth,
         "USDC": usdc,
@@ -285,8 +287,8 @@ def steal_tbtc(snx):
 @chain_fork
 def steal_wsol(snx):
     """The instance can steal WSOL tokens"""
-    # check WSOL balance
-    wsol_contract = snx.contracts["WSOL"]["contract"]
+    # check wSOL balance
+    wsol_contract = snx.contracts["wSOL"]["contract"]
     wsol_balance = wsol_contract.functions.balanceOf(snx.address).call()
     wsol_balance = wsol_balance / 10**9
 
@@ -317,12 +319,12 @@ def steal_wsol(snx):
         tx_hash = snx.web3.eth.send_transaction(tx_params)
         receipt = snx.wait(tx_hash)
         if receipt["status"] != 1:
-            raise Exception("WSOL Transfer failed")
+            raise Exception("wSOL Transfer failed")
 
         assert tx_hash is not None
         assert receipt is not None
         assert receipt.status == 1
-        snx.logger.info(f"Stole WSOL from {WSOL_WHALE}")
+        snx.logger.info(f"Stole wSOL from {WSOL_WHALE}")
 
 
 @chain_fork

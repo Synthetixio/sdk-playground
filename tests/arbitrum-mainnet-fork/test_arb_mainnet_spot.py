@@ -306,7 +306,7 @@ def test_spot_async_order(snx, contracts, token_name, test_amount, decimals):
         # ("USDe", TEST_USD_AMOUNT, 18, 0.05),
         # ("WETH", TEST_ETH_AMOUNT, 18, 0.05),
         # ("tBTC", TEST_BTC_AMOUNT, 18, 0.05),
-        # ("WSOL", TEST_SOL_AMOUNT, 9, 0.05),
+        # ("wSOL", TEST_SOL_AMOUNT, 9, 0.05),
     ],
 )
 def test_spot_atomic_order(
