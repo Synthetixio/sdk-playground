@@ -711,6 +711,11 @@ def test_alts_liquidation(snx, contracts, perps_account_id, collateral_config):
             approve_receipt = snx.wait(approve_tx)
             assert approve_receipt.status == 1
 
+        # manually update prices
+        mine_block(snx, chain)
+        update_prices(snx)
+
+        # wrap the token
         wrap_tx = snx.spot.wrap(
             collateral_amount, market_name=wrapped_token_name, submit=True
         )
