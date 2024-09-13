@@ -13,6 +13,7 @@ USDC_WHALE = "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
 ARB_WHALE = "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
 USDE_WHALE = "0xb3C24D9dcCC2Ec5f778742389ffe448E295B84e0"
 TBTC_WHALE = "0xa79a356B01ef805B3089b4FE67447b96c7e6DD4C"
+WSOL_WHALE = "0xD13A513f3d249E1558C176f93e24781f50772048"
 
 USDC_MINT_AMOUNT = 1000000
 USDC_LP_AMOUNT = 500000
@@ -40,7 +41,7 @@ def snx(pytestconfig):
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
-            "version": "18",
+            "version": "latest",
             "preset": "main",
         },
     )
@@ -50,6 +51,8 @@ def snx(pytestconfig):
     steal_usdc(snx)
     steal_usde(snx)
     steal_tbtc(snx)
+    steal_wsol(snx)
+    update_prices(snx)
     mint_usdx_with_usdc(snx)
     wrap_eth(snx)
     mine_block(snx, chain)
@@ -65,12 +68,14 @@ def contracts(snx):
     arb = snx.contracts["ARB"]["contract"]
     usde = snx.contracts["USDe"]["contract"]
     tbtc = snx.contracts["tBTC"]["contract"]
+    wsol = snx.contracts["wSOL"]["contract"]
     return {
         "WETH": weth,
         "USDC": usdc,
         "ARB": arb,
         "USDe": usde,
         "tBTC": tbtc,
+        "wSOL": wsol,
     }
 
 
@@ -275,6 +280,49 @@ def steal_tbtc(snx):
         assert receipt is not None
         assert receipt.status == 1
         snx.logger.info(f"Stole tBTC from {TBTC_WHALE}")
+
+
+@chain_fork
+def steal_wsol(snx):
+    """The instance can steal WSOL tokens"""
+    # check wSOL balance
+    wsol_contract = snx.contracts["wSOL"]["contract"]
+    wsol_balance = wsol_contract.functions.balanceOf(snx.address).call()
+    wsol_balance = wsol_balance / 10**9
+
+    # get some wsol
+    if wsol_balance < 10:
+        # send some eth to the whale
+        send_tx_params = snx._get_tx_params(to=WSOL_WHALE, value=ether_to_wei(1))
+        send_tx_hash = snx.execute_transaction(send_tx_params)
+        send_tx_receipt = snx.wait(send_tx_hash)
+
+        assert send_tx_hash is not None
+        assert send_tx_receipt is not None
+        assert send_tx_receipt.status == 1
+
+        transfer_amount = int((10 - wsol_balance) * 10**9)
+        snx.web3.provider.make_request("anvil_impersonateAccount", [WSOL_WHALE])
+
+        tx_params = wsol_contract.functions.transfer(
+            snx.address, transfer_amount
+        ).build_transaction(
+            {
+                "from": WSOL_WHALE,
+                "nonce": snx.web3.eth.get_transaction_count(WSOL_WHALE),
+            }
+        )
+
+        # Send the transaction directly without signing
+        tx_hash = snx.web3.eth.send_transaction(tx_params)
+        receipt = snx.wait(tx_hash)
+        if receipt["status"] != 1:
+            raise Exception("wSOL Transfer failed")
+
+        assert tx_hash is not None
+        assert receipt is not None
+        assert receipt.status == 1
+        snx.logger.info(f"Stole wSOL from {WSOL_WHALE}")
 
 
 @chain_fork
