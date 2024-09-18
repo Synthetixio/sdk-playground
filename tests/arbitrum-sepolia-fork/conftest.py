@@ -1,10 +1,13 @@
 import os
+from dotenv import load_dotenv
 from functools import wraps
 import pytest
 from synthetix import Synthetix
 from synthetix.utils import ether_to_wei
 from ape import networks, chain
 from utils.arb_helpers import mock_arb_precompiles
+
+load_dotenv()
 
 # constants
 SNX_DEPLOYER = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
@@ -33,6 +36,7 @@ def snx(pytestconfig):
         provider_rpc=chain.provider.uri,
         network_id=421614,
         is_fork=True,
+        price_service_endpoint=os.getenv("PRICE_SERVICE_ENDPOINT"),
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",

@@ -372,6 +372,14 @@ def test_liquidation(
     assert liquidatable_after["is_position_liquidatable"] == True
     snx.logger.info(f"Liquidatable: {liquidatable_after}")
 
+    # flag the account
+    mine_block(snx, chain)
+    flag_tx = snx.perps.flag(
+        account_id=perps_account_id, market_id=MARKET_ID, submit=True
+    )
+    flag_receipt = snx.wait(flag_tx)
+    assert flag_receipt["status"] == 1
+
     # liquidate the account
     mine_block(snx, chain)
     liquidate_tx = snx.perps.liquidate(

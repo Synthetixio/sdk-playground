@@ -1,10 +1,13 @@
 import os
+from dotenv import load_dotenv
 import time
 from functools import wraps
 import pytest
 from synthetix import Synthetix
 from synthetix.utils import ether_to_wei
 from ape import networks, chain
+
+load_dotenv()
 
 # constants
 SNX_DEPLOYER = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
@@ -39,6 +42,7 @@ def snx(pytestconfig):
         provider_rpc=chain.provider.uri,
         network_id=11155111,
         is_fork=True,
+        price_service_endpoint=os.getenv("PRICE_SERVICE_ENDPOINT"),
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
@@ -261,6 +265,7 @@ def liquidation_setup(snx, market_id):
 
     market = snx.perps.market_proxy
     parameters = list(market.functions.getMarketConfigurationById(market_id).call())
+    parameters[9] = int(ether_to_wei(100000))
     parameters[10] = int(ether_to_wei(0.9))
 
     tx_params = market.functions.setMarketConfigurationById(
