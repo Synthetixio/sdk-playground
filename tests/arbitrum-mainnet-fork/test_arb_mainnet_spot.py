@@ -9,6 +9,7 @@ from utils.chain_helpers import mine_block
 TEST_USD_AMOUNT = 100
 TEST_ETH_AMOUNT = 1
 TEST_BTC_AMOUNT = 0.25
+TEST_SOL_AMOUNT = 5
 
 
 @chain_fork
@@ -35,6 +36,8 @@ def test_spot_markets(snx):
         ("USDC", TEST_USD_AMOUNT, 6),
         ("WETH", TEST_ETH_AMOUNT, 18),
         ("tBTC", TEST_BTC_AMOUNT, 18),
+        ("USDe", TEST_USD_AMOUNT, 18),
+        ("wSOL", TEST_SOL_AMOUNT, 9),
     ],
 )
 def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
@@ -297,14 +300,18 @@ def test_spot_async_order(snx, contracts, token_name, test_amount, decimals):
 
 @chain_fork
 @pytest.mark.parametrize(
-    "token_name, test_amount, decimals",
+    "token_name, test_amount, decimals, slippage_tolerance",
     [
-        ("USDC", TEST_USD_AMOUNT, 6),
-        # ("WETH", TEST_ETH_AMOUNT, 18), # This will fail due to fees and slippage
-        # ("tBTC", TEST_BTC_AMOUNT, 18), # This will fail due to fees and slippage
+        ("USDC", TEST_USD_AMOUNT, 6, 0.002),
+        # ("USDe", TEST_USD_AMOUNT, 18, 0.05),
+        # ("WETH", TEST_ETH_AMOUNT, 18, 0.05),
+        # ("tBTC", TEST_BTC_AMOUNT, 18, 0.05),
+        # ("wSOL", TEST_SOL_AMOUNT, 9, 0.05),
     ],
 )
-def test_spot_atomic_order(snx, contracts, token_name, test_amount, decimals):
+def test_spot_atomic_order(
+    snx, contracts, token_name, test_amount, decimals, slippage_tolerance
+):
     """The instance can wrap USDC for sUSDC and commit an atomic order to sell for sUSD"""
     token = contracts[token_name]
     wrapped_token_name = "ETH" if token_name == "WETH" else token_name
@@ -373,7 +380,7 @@ def test_spot_atomic_order(snx, contracts, token_name, test_amount, decimals):
     swap_tx = snx.spot.atomic_order(
         "sell",
         test_amount,
-        slippage_tolerance=0.002,
+        slippage_tolerance=slippage_tolerance,
         market_id=market_id,
         submit=True,
     )
@@ -411,7 +418,7 @@ def test_spot_atomic_order(snx, contracts, token_name, test_amount, decimals):
     buy_tx = snx.spot.atomic_order(
         "buy",
         test_amount * price,
-        slippage_tolerance=0.002,
+        slippage_tolerance=slippage_tolerance,
         market_id=market_id,
         submit=True,
     )
