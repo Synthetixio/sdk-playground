@@ -72,7 +72,7 @@ def contracts(snx):
     arb = snx.contracts["ARB"]["contract"]
     usde = snx.contracts["USDe"]["contract"]
     tbtc = snx.contracts["tBTC"]["contract"]
-    wsol = snx.contracts["wSOL"]["contract"]
+    wsol = snx.contracts["WSOL"]["contract"]
     return {
         "WETH": weth,
         "USDC": usdc,
@@ -290,7 +290,7 @@ def steal_tbtc(snx):
 def steal_wsol(snx):
     """The instance can steal WSOL tokens"""
     # check wSOL balance
-    wsol_contract = snx.contracts["wSOL"]["contract"]
+    wsol_contract = snx.contracts["WSOL"]["contract"]
     wsol_balance = wsol_contract.functions.balanceOf(snx.address).call()
     wsol_balance = wsol_balance / 10**9
 
