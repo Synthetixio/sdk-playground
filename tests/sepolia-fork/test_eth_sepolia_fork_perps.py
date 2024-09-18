@@ -11,9 +11,9 @@ MARKET_NAMES = [
 ASSET_NAMES = [
     "ETH",
 ]
-TEST_USD_COLLATERAL_AMOUNT = 1000
-TEST_ETH_COLLATERAL_AMOUNT = 1
-TEST_POSITION_SIZE_USD = 50
+TEST_USD_COLLATERAL_AMOUNT = 20000
+TEST_ETH_COLLATERAL_AMOUNT = 5
+TEST_POSITION_SIZE_USD = 10000
 
 
 def test_perps_module(snx):
@@ -57,7 +57,7 @@ def test_perps_account_fetch(snx, perps_account_id):
 @pytest.mark.parametrize(
     "collateral_name, collateral_amount",
     [
-        # ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
         ("WETH", TEST_ETH_COLLATERAL_AMOUNT),
     ],
 )
@@ -132,7 +132,7 @@ def test_modify_collateral(
 @pytest.mark.parametrize(
     "collateral_name, collateral_amount",
     [
-        # ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
         ("WETH", TEST_ETH_COLLATERAL_AMOUNT),
     ],
 )
@@ -166,6 +166,9 @@ def test_account_flow(
     )
     modify_receipt = snx.wait(modify_tx)
     assert modify_receipt["status"] == 1
+
+    margin_info = snx.perps.get_margin_info(perps_account_id, market_id=MARKET_ID)
+    snx.logger.info(f"Margin: {margin_info}")
 
     # check the price
     pyth_data = snx.pyth.get_price_from_ids([pyth_feed_id])
@@ -279,10 +282,11 @@ def test_account_flow(
 @pytest.mark.parametrize(
     "collateral_name, collateral_amount",
     [
-        # ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
+        ("sUSD", TEST_USD_COLLATERAL_AMOUNT),
         ("WETH", TEST_ETH_COLLATERAL_AMOUNT),
     ],
 )
+# @pytest.mark.skip
 def test_liquidation(
     snx, contracts, perps_account_id, collateral_name, collateral_amount
 ):
@@ -366,6 +370,15 @@ def test_liquidation(
         account_id=perps_account_id, market_id=MARKET_ID
     )
     assert liquidatable_after["is_position_liquidatable"] == True
+    snx.logger.info(f"Liquidatable: {liquidatable_after}")
+
+    # flag the account
+    mine_block(snx, chain)
+    flag_tx = snx.perps.flag(
+        account_id=perps_account_id, market_id=MARKET_ID, submit=True
+    )
+    flag_receipt = snx.wait(flag_tx)
+    assert flag_receipt["status"] == 1
 
     # liquidate the account
     mine_block(snx, chain)

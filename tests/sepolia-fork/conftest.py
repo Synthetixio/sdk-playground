@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import time
 from functools import wraps
 import pytest
@@ -6,10 +7,12 @@ from synthetix import Synthetix
 from synthetix.utils import ether_to_wei
 from ape import networks, chain
 
+load_dotenv()
+
 # constants
 SNX_DEPLOYER = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
 
-SNX_LIQUIDITY_AMOUNT = 500000
+SNX_LIQUIDITY_AMOUNT = 4000000
 SUSD_MINT_AMOUNT = 50000
 
 
@@ -32,17 +35,18 @@ def mine_block(snx, chain, seconds=3):
 
 # fixtures
 @chain_fork
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def snx(pytestconfig):
     # set up the snx instance
     snx = Synthetix(
         provider_rpc=chain.provider.uri,
         network_id=11155111,
         is_fork=True,
+        price_service_endpoint=os.getenv("PRICE_SERVICE_ENDPOINT"),
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
-            "version": "latest",
+            "version": "8",
             "preset": "main",
         },
     )
@@ -170,8 +174,8 @@ def add_snx_liquidity(snx):
     balance = token.functions.balanceOf(snx.address).call() / 1e18
 
     # steal from deployer
-    if balance < 1000000:
-        transfer_amount = int((1000000 - balance) * 1e18)
+    if balance < SNX_LIQUIDITY_AMOUNT * 2:
+        transfer_amount = int((SNX_LIQUIDITY_AMOUNT * 2 - balance) * 1e18)
         snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER])
 
         tx_params = token.functions.transfer(
@@ -261,6 +265,7 @@ def liquidation_setup(snx, market_id):
 
     market = snx.perps.market_proxy
     parameters = list(market.functions.getMarketConfigurationById(market_id).call())
+    parameters[9] = int(ether_to_wei(100000))
     parameters[10] = int(ether_to_wei(0.9))
 
     tx_params = market.functions.setMarketConfigurationById(

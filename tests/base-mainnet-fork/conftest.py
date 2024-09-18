@@ -1,10 +1,12 @@
 import os
+from dotenv import load_dotenv
 from functools import wraps
 import pytest
 from synthetix import Synthetix
 from synthetix.utils import ether_to_wei
 from ape import networks, chain
 
+load_dotenv()
 
 # find an address with a lot of usdc
 SNX_DEPLOYER = "0xbb63CA5554dc4CcaCa4EDd6ECC2837d5EFe83C82"
@@ -31,6 +33,7 @@ def snx():
         network_id=8453,
         referrer=KWENTA_REFERRER,
         is_fork=True,
+        price_service_endpoint=os.getenv("PRICE_SERVICE_ENDPOINT"),
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
