@@ -35,7 +35,7 @@ def snx(pytestconfig):
     snx = Synthetix(
         provider_rpc=chain.provider.uri,
         network_id=421614,
-        is_fork=True,
+        # is_fork=True,
         price_service_endpoint=os.getenv("PRICE_SERVICE_ENDPOINT"),
         request_kwargs={"timeout": 120},
         cannon_config={
@@ -55,6 +55,28 @@ def snx(pytestconfig):
     wrap_eth(snx)
     update_prices(snx)
     return snx
+
+
+@chain_fork
+@pytest.fixture(scope="package")
+def snx_lite(pytestconfig):
+    # set up the snx instance
+    snx_lite = Synthetix(
+        provider_rpc=chain.provider.uri,
+        network_id=421614,
+        # is_fork=True,
+        price_service_endpoint=os.getenv("PRICE_SERVICE_ENDPOINT"),
+        request_kwargs={"timeout": 120},
+        # cannon_config={
+        #     "package": "synthetix-omnibus",
+        #     "version": "latest",
+        #     "preset": "main",
+        # },
+    )
+    mock_arb_precompiles(snx_lite)
+    set_timeout(snx_lite)
+    wrap_eth(snx_lite)
+    return snx_lite
 
 
 @pytest.fixture(scope="module")

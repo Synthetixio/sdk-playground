@@ -580,7 +580,6 @@ def test_usd_liquidation(snx, perps_account_id):
     assert commit_receipt["status"] == 1
 
     # wait for the order settlement
-    mine_block(snx, chain)
     settle_tx = snx.perps.settle_order(
         account_id=perps_account_id, max_tx_tries=5, submit=True
     )

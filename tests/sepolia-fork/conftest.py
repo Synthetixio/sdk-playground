@@ -307,7 +307,11 @@ def core_account_id(snx):
 def perps_account_id(snx):
     snx.logger.info("Creating a new perps account")
     create_tx = snx.perps.create_account(submit=True)
-    snx.wait(create_tx)
+    tx_receipt = snx.wait(create_tx)
+
+    assert create_tx is not None
+    assert tx_receipt is not None
+    assert tx_receipt.status == 1
 
     account_ids = snx.perps.get_account_ids()
     new_account_id = account_ids[-1]
