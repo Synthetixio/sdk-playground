@@ -43,6 +43,7 @@ def snx(pytestconfig):
             "version": "latest",
             "preset": "main",
         },
+        pyth_cache_ttl=0,
     )
     mock_arb_precompiles(snx)
     set_timeout(snx)
@@ -64,14 +65,8 @@ def snx_lite(pytestconfig):
     snx_lite = Synthetix(
         provider_rpc=chain.provider.uri,
         network_id=421614,
-        # is_fork=True,
         price_service_endpoint=os.getenv("PRICE_SERVICE_ENDPOINT"),
         request_kwargs={"timeout": 120},
-        # cannon_config={
-        #     "package": "synthetix-omnibus",
-        #     "version": "latest",
-        #     "preset": "main",
-        # },
     )
     mock_arb_precompiles(snx_lite)
     set_timeout(snx_lite)

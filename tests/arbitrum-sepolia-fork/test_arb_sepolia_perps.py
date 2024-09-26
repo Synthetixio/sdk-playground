@@ -397,6 +397,7 @@ def test_alt_account_flow(
     # withdraw for each collateral type
     for collateral_id, collateral_amount in margin_info["collateral_balances"].items():
         if collateral_amount > 0:
+            mine_block(snx, chain)
             withdrawal_amount = math.floor(collateral_amount * 1e8) / 1e8
             modify_tx = snx.perps.modify_collateral(
                 -withdrawal_amount,
