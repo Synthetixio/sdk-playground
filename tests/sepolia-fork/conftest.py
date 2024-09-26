@@ -41,7 +41,7 @@ def snx(pytestconfig):
     snx = Synthetix(
         provider_rpc=chain.provider.uri,
         network_id=11155111,
-        is_fork=True,
+        # is_fork=True,
         price_service_endpoint=os.getenv("PRICE_SERVICE_ENDPOINT"),
         request_kwargs={"timeout": 120},
         cannon_config={
@@ -49,6 +49,7 @@ def snx(pytestconfig):
             "version": "8",
             "preset": "main",
         },
+        pyth_cache_ttl=0,
     )
     fund_deployer(snx)
     mine_block(snx, chain)
@@ -307,7 +308,11 @@ def core_account_id(snx):
 def perps_account_id(snx):
     snx.logger.info("Creating a new perps account")
     create_tx = snx.perps.create_account(submit=True)
-    snx.wait(create_tx)
+    tx_receipt = snx.wait(create_tx)
+
+    assert create_tx is not None
+    assert tx_receipt is not None
+    assert tx_receipt.status == 1
 
     account_ids = snx.perps.get_account_ids()
     new_account_id = account_ids[-1]

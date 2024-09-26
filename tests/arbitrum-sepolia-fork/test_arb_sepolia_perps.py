@@ -397,6 +397,7 @@ def test_alt_account_flow(
     # withdraw for each collateral type
     for collateral_id, collateral_amount in margin_info["collateral_balances"].items():
         if collateral_amount > 0:
+            mine_block(snx, chain)
             withdrawal_amount = math.floor(collateral_amount * 1e8) / 1e8
             modify_tx = snx.perps.modify_collateral(
                 -withdrawal_amount,
@@ -580,7 +581,6 @@ def test_usd_liquidation(snx, perps_account_id):
     assert commit_receipt["status"] == 1
 
     # wait for the order settlement
-    mine_block(snx, chain)
     settle_tx = snx.perps.settle_order(
         account_id=perps_account_id, max_tx_tries=5, submit=True
     )

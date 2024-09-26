@@ -20,7 +20,7 @@ WSOL_WHALE = "0xD13A513f3d249E1558C176f93e24781f50772048"
 
 USDC_MINT_AMOUNT = 1000000
 USDC_LP_AMOUNT = 500000
-USDX_MINT_AMOUNT = 100000
+USDX_MINT_AMOUNT = 10000
 
 
 def chain_fork(func):
@@ -40,7 +40,7 @@ def snx(pytestconfig):
     snx = Synthetix(
         provider_rpc=chain.provider.uri,
         network_id=42161,
-        is_fork=True,
+        # is_fork=True,
         price_service_endpoint=os.getenv("PRICE_SERVICE_ENDPOINT"),
         request_kwargs={"timeout": 120},
         cannon_config={
@@ -48,6 +48,7 @@ def snx(pytestconfig):
             "version": "26",
             "preset": "main",
         },
+        pyth_cache_ttl=0,
     )
     mock_arb_precompiles(snx)
     set_timeout(snx)
@@ -364,6 +365,7 @@ def mint_usdx_with_usdc(snx):
     assert deposit_tx_receipt.status == 1
 
     # delegate the collateral
+    mine_block(snx, chain)
     delegate_tx_hash = snx.core.delegate_collateral(
         token.address,
         USDC_LP_AMOUNT,
@@ -372,6 +374,10 @@ def mint_usdx_with_usdc(snx):
         submit=True,
     )
     delegate_tx_receipt = snx.wait(delegate_tx_hash)
+    if delegate_tx_receipt.status != 1:
+        import pdb
+
+        pdb.set_trace()
     assert delegate_tx_receipt.status == 1
 
     # mint sUSD

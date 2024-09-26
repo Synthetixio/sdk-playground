@@ -32,7 +32,7 @@ def snx():
         provider_rpc=chain.provider.uri,
         network_id=84532,
         referrer=KWENTA_REFERRER,
-        is_fork=True,
+        # is_fork=True,
         price_service_endpoint=os.getenv("PRICE_SERVICE_ENDPOINT"),
         request_kwargs={"timeout": 120},
         cannon_config={
@@ -40,6 +40,7 @@ def snx():
             "version": "42",
             "preset": "andromeda",
         },
+        pyth_cache_ttl=0,
     )
     update_prices(snx)
     mint_usdc(snx)
