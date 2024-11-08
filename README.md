@@ -5,37 +5,29 @@ This repository contains a suite of tests, scripts, and notebook templates to ge
 ## Installation
 
 1. Before you begin, ensure you have:
-* An API key from [Alchemy](https://www.alchemy.com/)
-* A wallet address **and** the private key for that address (optional)
-* Installed Python 3.10 or greater
-    * Run `python --version` in your terminal to check
+
+- An API key from [Alchemy](https://www.alchemy.com/)
+- A wallet address **and** the private key for that address (optional)
+- Installed Python 3.10 or greater
+  - Run `python --version` in your terminal to check
 
 2. Clone this repository:
 
 ```bash
 git clone https://github.com/Synthetixio/sdk-playground.git
-cd project-template-python
+cd sdk-playground
 ```
 
-3. Set up a virtual environment:
+3. Install dependencies using [uv](https://docs.astral.sh/uv/):
 
 ```bash
-python3 -m venv env
-source env/bin/activate
-
-pip install --upgrade pip
-pip install -r requirements.txt
+uv sync
 ```
 
-4. Install `ape` plugins:
-    
-```bash
-ape plugins install .
-```
-
-5. Install [Foundry](https://github.com/foundry-rs/foundry):
+4. Install [Foundry](https://github.com/foundry-rs/foundry):
 
 Review the [installation guide](https://book.getfoundry.sh/getting-started/installation) or run the following:
+
 ```bash
 curl -L https://foundry.paradigm.xyz | bash
 
@@ -43,11 +35,15 @@ curl -L https://foundry.paradigm.xyz | bash
 foundryup
 ```
 
+5. Install `ape` plugins:
+
+```bash
+uv run ape plugins install .
+```
+
 6. Make a copy of the `.env.example` file, name it .env, and then enter the details for your RPC and wallet.
 
-
 The private key is optional. If one is not provided, the SDK will simulate the specified address, but transaction signing will be disabled.
-
 
 ## Running Scripts
 
@@ -55,7 +51,7 @@ If you've completed the steps above, you can run any of the scripts in the `scri
 
 ```bash
 # run the file at scripts/base_fork.py
-ape run base_fork
+uv run ape run base_fork
 ```
 
 By default, these scripts won't submit transactions. To enable this, you must edit the script and set `submit=True`. This precaution helps avoid unintended transactions on the blockchain.

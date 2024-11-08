@@ -7,6 +7,7 @@ The tests use [ape](https://github.com/ApeWorX/ape) and [foundry](https://github
 ## Test Structure
 
 The tests are organized into subdirectories based on the network, cannon preset, and whether the deployment is a fork or not. For example:
+
 ```
 - tests/
   - arbitrum-mainnet-fork/       # Arbitrum mainnet, main deployment, forked
@@ -29,13 +30,13 @@ To run the tests, use the `ape` command from the root directory of the project. 
 
 ```bash
 # Run tests on a fork
-ape test tests/arbitrum-mainnet-fork/ --network arbitrum:mainnet-fork:foundry
+uv run ape test tests/arbitrum-mainnet-fork/ --network arbitrum:mainnet-fork:foundry
 
 # Run tests on a live network
-ape test tests/arbitrum-sepolia-octo/ --network arbitrum:sepolia:alchemy
+uv run ape test tests/arbitrum-sepolia-octo/ --network arbitrum:sepolia:alchemy
 
 # Run a specific test file
-ape test tests/arbitrum-sepolia-octo-fork/test_arbitrum_sepolia_octo_perps.py --network arbitrum:sepolia-fork:foundry
+uv run ape test tests/arbitrum-sepolia-octo-fork/test_arbitrum_sepolia_octo_perps.py --network arbitrum:sepolia-fork:foundry
 ```
 
 Tests that run on forked networks should seed an RPC signer account with the necessary tokens and balances to run the tests. When running on live networks, ensure that you're providing an address and private key in the `.env` file. Ensure that the account has the necessary tokens and balances to run the tests.

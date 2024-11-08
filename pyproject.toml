@@ -1,0 +1,14 @@
+[project]
+name = "sdk-playground"
+version = "0.1.0"
+description = "Tests, scripts, and notebooks utilizing the Synthetix python SDK"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "eth-ape==0.8.20",
+    "eth-typing==4.4.0",
+    "ipykernel>=6.29.5",
+    "pytest>=8.3.3",
+    "python-dotenv==1.0.1",
+    "synthetix==0.1.21",
+]
