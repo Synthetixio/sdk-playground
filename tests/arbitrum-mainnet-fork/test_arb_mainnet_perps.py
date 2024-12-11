@@ -1,5 +1,4 @@
 import pytest
-import time
 import math
 from conftest import chain_fork, liquidation_setup, update_prices
 from ape import chain

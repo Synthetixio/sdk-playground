@@ -45,7 +45,7 @@ def snx(pytestconfig):
         request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
-            "version": "26",
+            "version": "latest",
             "preset": "main",
         },
         pyth_cache_ttl=0,
@@ -103,9 +103,9 @@ def set_timeout(snx):
     tx_hash = snx.web3.eth.send_transaction(tx_params)
     receipt = snx.wait(tx_hash)
     if receipt["status"] != 1:
-        raise Exception(f"Set timeout failed")
+        raise Exception("Set timeout failed")
     else:
-        snx.logger.info(f"Timeout set")
+        snx.logger.info("Timeout set")
 
 
 @chain_fork
@@ -444,7 +444,7 @@ def wrap_eth(snx):
         assert tx_hash is not None
         assert tx_receipt is not None
         assert tx_receipt.status == 1
-        snx.logger.info(f"Wrapped ETH")
+        snx.logger.info("Wrapped ETH")
 
 
 @chain_fork

@@ -1,5 +1,4 @@
 import pytest
-import time
 import math
 from conftest import chain_fork, liquidation_setup
 from ape import chain
@@ -76,7 +75,10 @@ def test_modify_collateral(snx, new_account_id):
 
     # modify collateral
     modify_tx = snx.perps.modify_collateral(
-        TEST_COLLATERAL_AMOUNT, market_name="sUSD", account_id=new_account_id, submit=True
+        TEST_COLLATERAL_AMOUNT,
+        market_name="sUSD",
+        account_id=new_account_id,
+        submit=True,
     )
     modify_receipt = snx.wait(modify_tx)
     assert modify_receipt["status"] == 1
